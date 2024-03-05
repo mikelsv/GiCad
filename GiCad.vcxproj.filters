@@ -32,9 +32,6 @@
     <ClInclude Include="GiLayer.h">
       <Filter>Заголовочные файлы</Filter>
     </ClInclude>
-    <ClInclude Include="Grbl.h">
-      <Filter>Заголовочные файлы</Filter>
-    </ClInclude>
     <ClInclude Include="GiCadWindows.h">
       <Filter>Заголовочные файлы</Filter>
     </ClInclude>
@@ -42,6 +39,9 @@
       <Filter>Заголовочные файлы</Filter>
     </ClInclude>
     <ClInclude Include="Glsl.h">
+      <Filter>Заголовочные файлы</Filter>
+    </ClInclude>
+    <ClInclude Include="Gerber.h">
       <Filter>Заголовочные файлы</Filter>
     </ClInclude>
   </ItemGroup>
@@ -52,11 +52,14 @@
     <None Include="glsl\gicad.fs">
       <Filter>Файлы ресурсов</Filter>
     </None>
-    <None Include="glsl\circle.fs">
+    <None Include="glsl\objects.fs">
       <Filter>Файлы ресурсов</Filter>
     </None>
-    <None Include="glsl\circle.vs">
+    <None Include="glsl\objects.vs">
       <Filter>Файлы ресурсов</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="buildlog.txt" />
   </ItemGroup>
 </Project>

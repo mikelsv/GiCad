@@ -47,7 +47,7 @@ public:
 class GlslMain : public MglSimpleGlsl{
 	GLuint vbo, vao, vertex_id, color_id;
 
-	GLint uni_iTime, uni_iRes, uni_iMove, uni_iZoom, uni_iMouse, unu_iChan0, uni_GiCircles, uni_GiCirclesCount;
+	GLint uni_iTime, uni_iRes, uni_iMove, uni_iZoom, uni_iMouse, uni_iFps, unu_iChan0, uni_GiCircles, uni_GiCirclesCount;
 	GLuint font_id;
 
 public:
@@ -63,6 +63,7 @@ public:
 		uni_iMove = GetUniformLocation("iMove");
 		uni_iZoom = GetUniformLocation("iZoom");
 		uni_iMouse = GetUniformLocation("iMouse");
+		uni_iFps = GetUniformLocation("iFps");
 
 		unu_iChan0 = GetUniformLocation("iChannel0");
 
@@ -163,6 +164,12 @@ public:
 		glUseProgram(0);
 	}
 
+	void UpdateFps(int fps){
+		UseProgram();
+		glUniform1i(uni_iFps, fps);
+		glUseProgram(0);
+	}
+
 	void Render(float iTime){
 		//GLint tex_id = 0;
 
@@ -170,6 +177,8 @@ public:
 		UseProgram();
 		glActiveTexture(GL_TEXTURE0);
 		glBindVertexArray(vao);
+
+		glUniform1fv(uni_iTime, 1, &iTime);
 
 		float xpos = -1, ypos = -1;
 		float w = 2, h = 2;
@@ -196,9 +205,6 @@ public:
 		// render quad
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		// now advance cursors for next glyph (note that advance is number of 1/64 pixels)
-		
-
-		glUniform1fv(uni_iTime, 1, &iTime);
 
 		glBindVertexArray(0);
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -209,15 +215,29 @@ public:
 class GlslObjectsHead{
 public:
 	int pos, size;
+	GLuint type; // GL_LINES or GL_POLYGON
+	MRGB color;
 };
 
 class GlslObjectsData{
 public:
-	float x, y, z;
+	float x, y, z;	
+};
+
+class GlslObjectsColor{
+public:
+	KiVec3 color;
+	
+	void SetColor(MRGB rgb){
+		color.x = rgb.red / 255.;
+		color.y = rgb.green / 255.;
+		color.z = rgb.blue / 255.;
+	}
+
 };
 
 class GlslObjectsBuffer{
-	MString head, data;
+	MString head, data, color;
 	int head_count, data_count;
 	int update;
 
@@ -228,6 +248,9 @@ public:
 
 		if(data.size() < sizeof(GlslObjectsData) * dcount)
 			data.Reserve(sizeof(GlslObjectsData) * dcount);
+
+		if(color.size() < sizeof(GlslObjectsColor) * dcount)
+			color.Reserve(sizeof(GlslObjectsColor) * dcount);
 
 		head_count = hcount;
 		data_count = dcount;
@@ -242,6 +265,10 @@ public:
 
 	GlslObjectsData* GetData(){
 		return (GlslObjectsData*) data.data;
+	}
+
+	GlslObjectsColor* GetColors(){
+		return (GlslObjectsColor*) color.data;
 	}
 
 	int GetHeadCount(){
@@ -263,7 +290,12 @@ public:
 } GlslObjectsBuffer;
 
 class GlslObjects : public MglSimpleGlsl{
-	GLuint vbo, vao, vertex_id, color_id;
+	// Buffers
+	GLuint vertex_array, vertex_pos, vertex_color;
+	
+	GLuint vertex_id, color_id;
+
+	// Uniform
 	GLuint uni_iMove, uni_iRes, uni_iZoom;
 
 	// Render texture.
@@ -276,7 +308,7 @@ struct vertex{
 
 public:
 	int Init(){
-		if(!Load(LoadFile("glsl/circle.vs"), LoadFile("glsl/circle.fs")))
+		if(!Load(LoadFile("glsl/objects.vs"), LoadFile("glsl/objects.fs")))
 			return 0;
 
 		color_id = GetUniformLocation("textColor");	
@@ -290,12 +322,21 @@ public:
 	}
 
 	int InitVbo(){
-		glGenVertexArrays(1, &vao);
-		glGenBuffers(1, &vbo);
-		glBindVertexArray(vao);
-		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		//glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+		// Array
+		glGenVertexArrays(1, &vertex_array);
+		glBindVertexArray(vertex_array);
+
+		// Position
+		glGenBuffers(1, &vertex_pos);
+		glBindBuffer(GL_ARRAY_BUFFER, vertex_pos);
 		glEnableVertexAttribArray(0);
+		
+		// Colors
+		glGenBuffers(1, &vertex_color);
+		glBindBuffer(GL_ARRAY_BUFFER, vertex_color);		
+		
+		//glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+		
 		//glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
@@ -323,8 +364,8 @@ public:
 	void Render(GLint tex_id){
 	   // activate corresponding render state	
 		UseProgram();
-		glActiveTexture(GL_TEXTURE0);
-		glBindVertexArray(vao);
+		//glActiveTexture(GL_TEXTURE0);
+		glBindVertexArray(vertex_array);
 
 		float xpos = -1, ypos = -1;
 		float w = 2, h = 2;
@@ -350,36 +391,67 @@ public:
 		// render glyph texture over quad
 		//glBindTexture(GL_TEXTURE_2D, tex_id);
 		// update content of VBO memory
-		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		
 		
 		if(GlslObjectsBuffer.GetUpdate()){
+			// Positions buffer
+			glBindBuffer(GL_ARRAY_BUFFER, vertex_pos);
 			glBufferData(GL_ARRAY_BUFFER, GlslObjectsBuffer.GetDataCount() * sizeof(GlslObjectsData), GlslObjectsBuffer.GetData(), GL_STATIC_DRAW);
-			GlslObjectsBuffer.Updated();
-		}
+			
+
 		//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices); // be sure to use glBufferSubData and not glBufferData
 		//glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-		glVertexAttribPointer(
-   0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-   3,                  // size
-   GL_FLOAT,           // type
-   GL_FALSE,           // normalized?
-   0,                  // stride
-   (void*)0            // array buffer offset
-);
+			glVertexAttribPointer(
+			   0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
+			   3,                  // size
+			   GL_FLOAT,           // type
+			   GL_FALSE,           // normalized?
+			   0,                  // stride
+			   (void*)0            // array buffer offset
+			);			
 
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		// render quad
-		glDrawArrays(GL_LINE_LOOP, 0, GlslObjectsBuffer.GetDataCount());
-		// now advance cursors for next glyph (note that advance is number of 1/64 pixels)
+			// Color buffer
+			glBindBuffer(GL_ARRAY_BUFFER, vertex_color);
+			glBufferData(GL_ARRAY_BUFFER, GlslObjectsBuffer.GetDataCount() * sizeof(GlslObjectsColor), GlslObjectsBuffer.GetColors(), GL_STATIC_DRAW);
+
+			glVertexAttribPointer(
+			   1,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
+			   3,                  // size
+			   GL_FLOAT,           // type
+			   GL_FALSE,           // normalized?
+			   0,                  // stride
+			   (void*)0            // array buffer offset
+			);
+			glEnableVertexAttribArray(1);
+
+			// Ok
+			GlslObjectsBuffer.Updated();
+
+			// Unbind
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+		}
 		
-		glBindVertexArray(0);
-		//glBindTexture(GL_TEXTURE_2D, 0);
+		
+		// Render
+		auto head = GlslObjectsBuffer.GetHead(), head_end = head + GlslObjectsBuffer.GetHeadCount();
+		while(head < head_end){
+			glDrawArrays(head->type, head->pos, head->size);
+			head ++;
+		}
+
+		// Draw all
+		//glDrawArrays(GL_LINE_LOOP, 0, GlslObjectsBuffer.GetDataCount());
+				
+		glBindVertexArray(0);		
 		glUseProgram(0);
 	}	
 };
 
+class GlslMenu : public MglSimpleGlsl{
 
+
+};
 
 void OpenGLDrawCircle(GLfloat x, GLfloat y, GLfloat radius, MRGB rgb, int a=1, int lines=0){
 	float angle;

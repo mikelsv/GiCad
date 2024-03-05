@@ -10,24 +10,41 @@ public:
 };
 
 class GiLayerPath{
+public:
 	OList<GiLayerPathEl> path;
-};
 
+	void AddPoint(double x, double y){
+		GiLayerPathEl *el = path.NewE();
+		el->x = x;
+		el->y = y;
+	}
+};
 
 class GiLayer{
 	// Head
 	int layer_id;
 	MString name;
-//	MGRB color;
+	MRGB color;
 
 	// Data
 	OList<GiLayerCircle> cls;
+	OList<GiLayerPath> paths;
+
+	GiLayerPath *last_path;
 
 public:
+	GiLayer(){
+		last_path = 0;
+		color.set(rand(), rand(), rand());
+	}
 
 	// Get
 	int GetId(){
 		return layer_id;
+	}
+
+	MRGB GetColor(){
+		return color;
 	}
 
 	// Set
@@ -43,8 +60,17 @@ public:
 		el->dia = dia;
 	}
 
-	void AddPath(double x, double y, double dia){
+	void AddPath(){
+		//if(!last_path)
+		last_path = paths.NewE();
+		//last_path->AddPoint(x, y);
+	}
 
+	void AddPoi(double x, double y, double dia){
+		if(!last_path)
+			last_path = paths.NewE();
+
+		last_path->AddPoint(x, y);
 	}
 
 	int SetCirData(GlslCircleEl *cel, int count){
@@ -68,6 +94,8 @@ public:
 
 	// ~
 	void Clean(){
+		last_path = 0;
+
 		cls.Clean();
 	}
 

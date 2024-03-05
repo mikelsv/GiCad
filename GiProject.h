@@ -1,4 +1,4 @@
-#define GIPROJECT_RENDER_GLSL
+//#define GIPROJECT_RENDER_GLSL
 #define GIPROJECT_RENDER_TRISZ	12
 
 
@@ -78,31 +78,34 @@ public:
 	}
 
 	bool DoPaintLayers(GlslMain &glsl){
-		int count = 0, size = 0;
+		int cir_count = 0, path_count = 0, path_size = 0, size = 0;
 
 		// Count
 		GiLayer *el = 0;
 		while(el = lays.Next(el)){
-			count += el->cls.Size();
-		}
+			cir_count += el->cls.Size();
+			
+			GiLayerPath *pel = 0;
+			while(pel = el->paths.Next(pel)){
+				path_count ++;
+				path_size += pel->path.Size();
+			}
+		}		
 
-	//	if(paint_cir.size() < count * sizeof(GlslCircleEl))
-//			paint_cir.Reserve(count * sizeof(GlslCircleEl));
-
-		// Collect
-		//GlslCircleEl *cel = (GlslCircleEl*)paint_cir.data;
-
-		GlslObjectsBuffer.Reserve(count, count * GIPROJECT_RENDER_TRISZ);
+		GlslObjectsBuffer.Reserve(cir_count + path_count, cir_count * GIPROJECT_RENDER_TRISZ + path_size);
 
 		GlslObjectsHead *head = GlslObjectsBuffer.GetHead();
 		GlslObjectsData *data = GlslObjectsBuffer.GetData();
+		GlslObjectsColor *color = GlslObjectsBuffer.GetColors();
 
 		// Make circles
 		while(el = lays.Next(el)){
 			GiLayerCircle *cel = 0;
 
+			// Circles
 			while(cel = el->cls.Next(cel)){
 				head->pos = size;
+				head->type = GL_POLYGON;
 				head->size = GIPROJECT_RENDER_TRISZ;
 
 				for(int i = 0; i < GIPROJECT_RENDER_TRISZ; i++){
@@ -111,10 +114,35 @@ public:
 					data->y = cel->y + (sin(angle) * cel->dia / 2);
 					data->z = 0;
 					data ++;
+
+					color->SetColor(el->GetColor());
+					color ++;
 				}
 
 				head ++;
 				size += GIPROJECT_RENDER_TRISZ;
+			}
+
+			// Paths
+			GiLayerPath *pel = 0;
+			GiLayerPathEl *pel2 = 0;
+
+			while(pel = el->paths.Next(pel)){
+				head->pos = size;
+				head->size = pel->path.Size();
+				head->type = GL_LINES;
+				head ++;
+				
+				while(pel2 = pel->path.Next(pel2)){
+					data->x = pel2->x;
+					data->y = pel2->y;
+
+					data ++;
+					size ++;
+
+					color->SetColor(el->GetColor());
+					color ++;
+				}		
 			}
 		}
 
@@ -240,12 +268,21 @@ bool GiProjectLayerAddCircle(int layer_id, double x, double y, double dia){
 	return 1;
 }
 
-bool GiProjectLayerAddPath(int layer_id, double x, double y, double dia){
+bool GiProjectLayerAddPath(int layer_id){
 	GiLayer *el = GiProject.GetLayerById(layer_id);
 	if(!el)
 		return 0;
 
-	el->AddPath(x, y, dia);
+	el->AddPath();
+	return 1;
+}
+
+bool GiProjectLayerAddPPoi(int layer_id, double x, double y){
+	GiLayer *el = GiProject.GetLayerById(layer_id);
+	if(!el)
+		return 0;
+
+	el->AddPoi(x, y, 0);
 	return 1;
 }
 

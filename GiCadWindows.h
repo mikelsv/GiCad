@@ -1,4 +1,5 @@
 #define MGLYSCALE -1
+#define GISCREENZOOM	4
 
 class GiCadWindowsMouse{
 public:
@@ -39,12 +40,20 @@ public:
 	// Timer
 	MTimer ttime;
 	double stime;
+
+	// FPS
+	double fps_time;
+	int fps, fps_count;
+
+	GLuint tex, fbo;
 	
+	// Nww
 	GiCadWindows(){
 		size = KiInt2(1024, 768);
 		move = KiInt2(0, 0);
 		//mouse = KiInt2(0, 0);
-		zoom = .1;
+		zoom = 1;
+		fps_time = 0;
 	}
 
 	void Init(){
@@ -55,10 +64,30 @@ public:
 		glsl.SetFont(GlslFontTexture.GetTexture());
 
 		glsl.UpdateZoom(zoom);
-		glslt.UpdateZoom(zoom);		
+		glslt.UpdateZoom(zoom);	
+
+		MaticalsOpenGl.width = size.x;
+		MaticalsOpenGl.height = size.y;
+		
+		//CreateFrameBuffer(tex, fbo);
+		//glsl.SetLayers(tex);
+		//glsl.SetFont(tex);
 
 		ttime.Init();
 		stime = ttime.dtime();
+	}
+
+	void UpdateFps(){
+		fps_count ++;
+
+		if(glfwGetTime() - fps_time >= 1.0){		
+			fps_time += 1.0;
+
+			fps = fps_count;
+			fps_count = 0;
+
+			glsl.UpdateFps(fps);
+		}
 	}
 
 	void Resize(int x, int y){
@@ -73,10 +102,15 @@ public:
 			//glsl.SetCirData(GiProject.GetPaintData());
 		}
 
-		glsl.Render((ttime.dtime() - stime) / 1000);
+		//
 		GiProject.Render(move, KiVec2(size.x, size.y), zoom);
 
+		glsl.Render((ttime.dtime() - stime) / 1000);
+
+		//glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 		glslt.Render(0);
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		
 	}
 
 	void LoadCongig(){
@@ -93,6 +127,8 @@ public:
 } GiCadWindows;
 
 static void GiWndUpdate(GLFWwindow* window, float delta){
+	GiCadWindows.UpdateFps();	
+
 	//std::cout << "delta:"<<delta<< std::endl;
 //	if (keyArr[GLFW_KEY_ESCAPE])
 //		glfwSetWindowShouldClose(window, 1);
@@ -106,7 +142,9 @@ static void GiWndRenderScene(GLFWwindow* window, float delta){
 	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     //glClear(GL_COLOR_BUFFER_BIT);
 
-	glClear(GL_COLOR_BUFFER_BIT); 
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  
+
+	/*
 	glColor3f(1, 1, 1);
 
 	glBegin(GL_LINE_LOOP);
@@ -128,6 +166,7 @@ static void GiWndRenderScene(GLFWwindow* window, float delta){
 	glVertex2f(0.25, 0.75);
 	glEnd();
 	glFlush();
+	*/
 
 	GiCadWindows.Render();
 
@@ -141,9 +180,16 @@ static void GiWndResize(GLFWwindow* window, int w, int h){
 		return ;
 	}/*
 
+	
+
 	if(MaticalsOpenGl.IsDisableResize())
 		return ;
 		*/
+
+	glViewport ( 0, 0, (GLsizei)w, (GLsizei)h );
+	GiCadWindows.Resize(w, h);
+
+	/*
 	glViewport(0, 0, w, h);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -155,6 +201,7 @@ static void GiWndResize(GLFWwindow* window, int w, int h){
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
 	GiCadWindows.Resize(w, h);
+	*/
 
 	/*
 	MaticalsOpenGl.UpdateSize(w, h);
@@ -192,7 +239,7 @@ static void GiWndMouseMotionCallback(GLFWwindow* window, double x, double y){
 	//MaticalsOpenGl.SetMouse(KiInt2(x, y));
 
 	// Left button
-	GiCadWindows.mouse[0].cur = KiInt2(x, GiCadWindows.size.y - y) * GiCadWindows.zoom;
+	GiCadWindows.mouse[0].cur = KiInt2(x, GiCadWindows.size.y - y) / GiCadWindows.zoom / GISCREENZOOM;
 	GiCadWindows.glsl.UpdateMouseSelect(GiCadWindows.mouse[0].cur, GiCadWindows.mouse[0].hold, GiCadWindows.mouse[0].down);
 
 	// Center button
@@ -224,16 +271,21 @@ void GiWndMouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset
 	double xpos, ypos;
     glfwGetCursorPos(window, &xpos, &ypos);
 
-	float zoom = GiCadWindows.zoom + yoffset * 0.1f * -1;
+	float zoom = GiCadWindows.zoom + yoffset * 0.2f;
 
-	if(zoom < 0.1){
-		zoom = 0.1;
-	}
+	if(zoom < 0.05)
+		zoom = 0.05;
+	if(zoom > 25000)
+		zoom = 25000;
 
 	float center_x = GiCadWindows.size.x / 2;
 	float center_y = GiCadWindows.size.y / 2;
 
-	GiCadWindows.move += KiInt2((xpos - center_x) / GiCadWindows.zoom * zoom, (ypos - center_y) * GiCadWindows.zoom / zoom);
+	GiCadWindows.move = KiInt2(GiCadWindows.move.x * GiCadWindows.zoom / zoom, GiCadWindows.move.y * GiCadWindows.zoom / zoom);
+	//GiCadWindows.move += KiInt2((xpos - center_x) * GiCadWindows.zoom / zoom, (ypos - center_y) * GiCadWindows.zoom / zoom);
+	//GiCadWindows.move -= KiInt2(xpos * yoffset, 0);
+	//GiCadWindows.move += KiInt2((xpos - center_x) * GiCadWindows.zoom / zoom, (ypos - center_y) * GiCadWindows.zoom / zoom);
+
 	GiCadWindows.zoom = zoom;
 
 	GiCadWindows.glsl.UpdateZoom(GiCadWindows.zoom);
@@ -243,7 +295,7 @@ void GiWndMouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset
 	GiCadWindows.glslt.UpdateZoom(GiCadWindows.zoom);
 	GiCadWindows.glslt.UpdateMove(GiCadWindows.move);
 
-	glfwSetCursorPos(window, GiCadWindows.size.x / 2, GiCadWindows.size.y / 2);
+	//glfwSetCursorPos(window, GiCadWindows.size.x / 2, GiCadWindows.size.y / 2);
 //	GiCadWindows.mouse_move = KiInt2(GiCadWindows.size.x / 2, GiCadWindows.size.y / 2);
 }
 

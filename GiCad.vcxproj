@@ -69,6 +69,8 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../msvcore2/include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -88,13 +90,16 @@
     <ClInclude Include="GiLayer.h" />
     <ClInclude Include="GiProject.h" />
     <ClInclude Include="Glsl.h" />
-    <ClInclude Include="Grbl.h" />
+    <ClInclude Include="Gerber.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="glsl\circle.fs" />
-    <None Include="glsl\circle.vs" />
+    <None Include="glsl\objects.fs" />
+    <None Include="glsl\objects.vs" />
     <None Include="glsl\gicad.fs" />
     <None Include="glsl\gicad.vs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="buildlog.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

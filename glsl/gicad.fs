@@ -4,7 +4,10 @@ uniform vec2 iResolution;
 uniform vec2 iMove;
 uniform float iZoom;
 uniform vec4 iMouse;
+uniform int iFps;
 uniform sampler2D iChannel0;
+
+#define xZoom 4
 
 // Circle
 struct GiCircle{
@@ -46,24 +49,24 @@ out highp vec4 fragColor;
 
 bool InMouseRange(inout vec4 fragColor, in vec2 fragCoord){
     // Cursor //
-    vec2 cDist = fragCoord.xy - iMouse.xy - iMove * iZoom;    
-    vec2 sDist = fragCoord.xy - iMouse.zw - iMove * iZoom;
+    vec2 cDist = fragCoord.xy - iMouse.xy - iMove / iZoom / xZoom;
+    vec2 sDist = fragCoord.xy - iMouse.zw - iMove / iZoom / xZoom;
     float mDist = length(cDist);
 
     // Vertical
-    if(abs(cDist.x) < 1. * iZoom && abs(cDist.y) < 10. * iZoom){
+    if(abs(cDist.x) < 1. / iZoom && abs(cDist.y) < 10. / iZoom){
         fragColor.xyz = vec3(0., 0., 1.);
         return true;
     }
        
     // Horizontal
-    if(abs(cDist.x) < 10. * iZoom && abs(cDist.y) < 1. * iZoom){
+    if(abs(cDist.x) < 10. / iZoom && abs(cDist.y) < 1. / iZoom){
         fragColor.xyz = vec3(0., 0., 1.);
         return true;
     }
 
-    // Circle    
-    if(mDist < 10){
+    // Circle
+    if(mDist < 10 / iZoom){
         fragColor.xyz = vec3(1., 0., 0.);
         return true;
     }
@@ -168,6 +171,19 @@ float PrintFloatP2(vec2 p, float val){
     int vali = int(val), count = 0;
     int arr[16];
 
+    // -
+    if(val < 0){
+        arr[count + 1] = 45;
+        vali *= -1;
+        count ++;
+    }
+
+    // 0
+    if(vali == 0){
+        arr[count + 1] = 48;
+        count ++;
+     }
+
     // Count
     while(vali > 0){
         vali /= 10;
@@ -183,7 +199,7 @@ float PrintFloatP2(vec2 p, float val){
         arr[0] = count;
 
     // Write
-    vali = int(val);
+    vali = abs(int(val));
     while(vali > 0){
         arr[count --] = 48 + vali % 10;
         vali /= 10;
@@ -192,25 +208,69 @@ float PrintFloatP2(vec2 p, float val){
     return PrintChars(p, arr);
 }
 
+float PrintCharsCoord(vec2 fragCoord, vec2 pos, float size, int text[16]){
+    return PrintChars((fragCoord - pos) / size, text);
+}
+
+vec2 PrintCharsCoord(vec2 fragCoord, vec2 pos, float size){
+    return (fragCoord - pos) / size;
+}
+
 // Tool bar
 // Js: var t = 'X coodrinate', ts = t.length; while(t.length < 15) t+= ' '; ts + ', ' + t.split('').map(x=>x.charCodeAt(0)).reduce((a,b)=>a + ', ' + b);
 int text_zoom[] = int[](1, 90, 32, 99, 111, 111, 114, 100, 105, 110, 97, 116, 101, 32, 32, 32);
+int text_fps[] = int[](3, 70, 80, 83, 111, 111, 114, 100, 105, 110, 97, 116, 101, 32, 32, 32);
+int text_any[] = int[](1, 70, 80, 83, 111, 111, 114, 100, 105, 110, 97, 116, 101, 32, 32, 32);
+
 
 void toolBar(inout vec4 fragColor, in vec2 fragCoord){
     vec2 uv = fragCoord/iResolution.xy;
 
     if(fragCoord.y < 70.){
-        fragColor.y = 0.;
+        fragColor = vec4(0., 1., 1., 1.);        
+        //fragColor.x += PrintChars((fragCoord - vec2(100., 100.)) / 1. / 70., text_zoom);
 
         //  Zoom
-        fragColor.x += PrintChars((uv - vec2(.0, 0.)) * 10., text_zoom);
-        fragColor.x += PrintFloatP2((uv - vec2(.1, 0.)) * 10., iZoom);
+        fragColor.x += PrintChars(PrintCharsCoord(fragCoord, vec2(0., -10.), 70.), text_zoom);
+        fragColor.x += PrintFloatP2(PrintCharsCoord(fragCoord, vec2(40., -10.), 70.), iZoom);
+
+        // XY
+        text_any[1] = 88;
+        fragColor.x += PrintChars(PrintCharsCoord(fragCoord, vec2(200., -10.), 70.), text_any);
+        fragColor.x += PrintFloatP2(PrintCharsCoord(fragCoord, vec2(240., -10.), 70.), iMouse.x + iMove.x / iZoom / xZoom);
+
+        text_any[1] = 89;
+        fragColor.x += PrintChars(PrintCharsCoord(fragCoord, vec2(500., -10.), 70.), text_any);
+        fragColor.x += PrintFloatP2(PrintCharsCoord(fragCoord, vec2(540., -10.), 70.), iMouse.y + iMove.y / iZoom / xZoom);
+
+        // Fps
+        //fragColor.x += PrintChars((uv - vec2(.50, 0.)) * 10., text_fps);
+        //fragColor.x += PrintFloatP2((uv - vec2(.7, 0.)) * 10., iFps);
+    }
+
+    if(iFps > 0.){
+        fragColor.xyz += PrintChars(PrintCharsCoord(fragCoord, vec2(0., iResolution.y - 60.), 70.), text_any);
+        fragColor.xyz += PrintFloatP2(PrintCharsCoord(fragCoord, vec2(40., iResolution.y - 60.), 70.), iFps);        
+    }
+}
+
+void drawRing00(inout vec4 fragColor, in vec2 fragCoord){
+    float distance  = length(vec2(0., 0.) - fragCoord);
+    float innerRadius = 40;
+    float outerRadius = 50;
+
+    if (distance > innerRadius && distance < outerRadius){
+        fragColor = vec4(1., 1., 1., 1.);
     }
 }
 
 void main(){
 	// Main
-	mainImage(fragColor, (gl_FragCoord.xy + iMove.xy) * iZoom);
+	mainImage(fragColor, (gl_FragCoord.xy + iMove.xy) / iZoom / xZoom);
+
+    // X0Y0 Ring
+    drawRing00(fragColor, (gl_FragCoord.xy + iMove.xy) / iZoom / xZoom);
+
 
     // Tools
     toolBar(fragColor, gl_FragCoord.xy);

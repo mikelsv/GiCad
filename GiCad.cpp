@@ -14,7 +14,8 @@
 
 Versions PROJECTVER[] = {
     // new version to up
-	"0.0.0.2", "30.03.2024 08:01",
+	"0.0.0.3", "05.03.2024 10:30",
+	"0.0.0.2", "30.02.2024 08:01",
     "0.0.0.1", "26.02.2024 08:51" // (Moscow time)
 };
 
@@ -27,7 +28,7 @@ Versions PROJECTVER[] = {
 #include "../msvcore2/opengl/mgl.h"
 
 // Gerber
-#include "Grbl.h"
+#include "Gerber.h"
 
 // Windows
 #include "Glsl.h"
@@ -50,6 +51,16 @@ int main(int args, char* arg[], char* env[]){
 	// Glfw
 	glfwInit();
 
+	glfwWindowHint ( GLFW_RESIZABLE, 1 );
+ //   glfwWindowHint ( GLFW_DOUBLEBUFFER, 1 );
+    //glfwWindowHint ( GLFW_DEPTH_BITS, 0 );
+ //   glfwWindowHint ( GLFW_CLIENT_API, GLFW_OPENGL_API );
+    //glfwWindowHint ( GLFW_CONTEXT_VERSION_MAJOR, 4 );
+    //glfwWindowHint ( GLFW_CONTEXT_VERSION_MINOR, 4 );
+ //   glfwWindowHint ( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
+ //   glfwWindowHint ( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
+	//glDisable(GL_DEPTH_TEST);
+
 	// Window
 	GLFWwindow* window;
 	window = glfwCreateWindow(GiCadWindows.size.x, GiCadWindows.size.y, MString(LString() + "GiCad " + PROJECTVER[0].ver), 0, NULL); // 
@@ -70,6 +81,9 @@ int main(int args, char* arg[], char* env[]){
 	// Init windows
 	GiCadWindows.Init();
 	GiWndResize(window, GiCadWindows.size.x, GiCadWindows.size.y);
+	
+	// Extender options
+	srand(time());
 
 	// Callbacks
 	glfwSetWindowSizeCallback(window, GiWndResize);
@@ -81,10 +95,10 @@ int main(int args, char* arg[], char* env[]){
 
 	// Process
 	while (!glfwWindowShouldClose(window)) {
-		double delta = glfwGetTime();
-		GiWndUpdate(window, delta);
+		//double delta = glfwGetTime();
+		GiWndUpdate(window, 0);
 //		MaticalsOpenGl.UpdateTime(delta);
-		GiWndRenderScene(window, delta);
+		GiWndRenderScene(window, 0);
 
 		//glsl.Render(draw_text.);
 
@@ -109,7 +123,7 @@ int main(int args, char* arg[], char* env[]){
 				break;
 		}*/
 
-		glfwSetTime(0);
+		//glfwSetTime(0);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
@@ -119,9 +133,6 @@ int main(int args, char* arg[], char* env[]){
 	GiCadWindows.SaveConfig();
 
 	return 0;
-
-	//GrblFile grb;
-	//grb.Open("C:/My/Projects/PCB/Power Supply EE10-A1 DK106/grbl/Power Supply EE10-A1 DK106-F_SilkS.gbr");
 }
 
 

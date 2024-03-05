@@ -1,4 +1,6 @@
 bool GiProjectLayerAddCircle(int layer_id, double x, double y, double dia);
+bool GiProjectLayerAddPath(int layer_id);
+bool GiProjectLayerAddPPoi(int layer_id, double x, double y);
 bool GiProjectLayerClean(int layer_id);
 
 
@@ -27,6 +29,8 @@ public:
 			Error(LString() + "File is empty: " + name);
 			return 0;
 		}
+
+		GiProjectLayerClean(layer_id);
 
 		return is_open = Read(data);
 	}
@@ -111,6 +115,7 @@ private:
 
 	// Commands
 	int cmd_x, cmd_y, cmd_d, cmd_g, cmd_i, cmd_j, cmd_m;
+	int cmd_x2, cmd_y2;
 
 	// Apertures
 	OList<GrblFileAperture> aps;
@@ -129,6 +134,10 @@ public:
 			// TF
 			if(line.incompareu("%TF.")){
 				// Additional data
+			}
+
+			if(line.incompareu("%TO.")){
+				GiProjectLayerAddPath(layer_id);
 			}
 
 			// %
@@ -205,8 +214,37 @@ public:
 			// Code
 			switch(code){
 			case '*':
-				if(line_code == 'X')
-					GiProjectLayerAddCircle(layer_id, cmd_x / 1000000., cmd_y / 1000000., 10);
+				if(line_code == 'X'){
+					if(cmd_g == 1)
+						GiProjectLayerAddPPoi(layer_id, cmd_x / 1000000., cmd_y / 1000000.);
+					else if(cmd_g == 02 || cmd_g == 03){
+						// G02 to G01
+						double sx = cmd_x2 / 1000000., sy = cmd_y2 / 1000000.;
+						double ex = cmd_x / 1000000., ey = cmd_y / 1000000.;
+						double cx = sx + cmd_i / 1000000., cy = sy + cmd_j / 1000000.;
+						double rad = pow(pow(cx - sx, 2) + pow(cy - sy, 2), 0.5);
+
+						// Start / end angles
+						double sangle = atan2(sy - cy, sx - cx);
+						double eangle = atan2(ey - cy, ex - cx);
+						int points = int(ceil(abs(eangle - sangle) / (PI / 180)));
+
+						for(int i = 0; i < points + 1; i ++){
+							double angle = sangle + (eangle - sangle) * i / points;
+
+							double x = cx + rad * cos(angle);
+							double y = cy + rad * sin(angle);
+
+							GiProjectLayerAddPPoi(layer_id, x, y);
+							GiProjectLayerAddPPoi(layer_id, x, y);
+						}
+
+						GiProjectLayerAddPPoi(layer_id, cmd_x / 1000000., cmd_y / 1000000.);
+					}
+
+					cmd_x2 = cmd_x;
+					cmd_y2 = cmd_y;
+				}
 				return 1;
 
 			case 'X':
@@ -236,9 +274,16 @@ public:
 			case 'G':
 				cmd_g = val.toi();
 
+				// Lines
+				if (cmd_g == 01){
+					//GiProjectLayerAddPath(layer_id);
+				}
+
 				// Comment
 				if(cmd_g == 4)
 					return 1;
+
+
 
 				break;
 
