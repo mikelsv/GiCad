@@ -14,6 +14,7 @@
 
 Versions PROJECTVER[] = {
     // new version to up
+	"0.0.0.4", "06.03.2024 10:49",
 	"0.0.0.3", "05.03.2024 10:30",
 	"0.0.0.2", "30.02.2024 08:01",
     "0.0.0.1", "26.02.2024 08:51" // (Moscow time)
@@ -54,7 +55,7 @@ int main(int args, char* arg[], char* env[]){
 	glfwWindowHint ( GLFW_RESIZABLE, 1 );
  //   glfwWindowHint ( GLFW_DOUBLEBUFFER, 1 );
     //glfwWindowHint ( GLFW_DEPTH_BITS, 0 );
- //   glfwWindowHint ( GLFW_CLIENT_API, GLFW_OPENGL_API );
+    //glfwWindowHint ( GLFW_CLIENT_API, GLFW_OPENGL_API );
     //glfwWindowHint ( GLFW_CONTEXT_VERSION_MAJOR, 4 );
     //glfwWindowHint ( GLFW_CONTEXT_VERSION_MINOR, 4 );
  //   glfwWindowHint ( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
@@ -72,8 +73,8 @@ int main(int args, char* arg[], char* env[]){
 
 	// OpenGL state 
     //glEnable(GL_CULL_FACE);
-    //glEnable(GL_BLEND);
-    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	// Debug
 	MsvGlDebug(1, 0);

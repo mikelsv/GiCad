@@ -58,6 +58,7 @@
     <None Include="glsl\objects.vs">
       <Filter>Файлы ресурсов</Filter>
     </None>
+    <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="buildlog.txt" />

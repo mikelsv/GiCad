@@ -51,7 +51,7 @@ class GlslMain : public MglSimpleGlsl{
 	GLuint font_id;
 
 public:
-	bool Init(KiInt2 res){
+	bool Init(KiVec2 res){
 		if(!Load(LoadFile("glsl/gicad.vs"), LoadFile("glsl/gicad.fs")))
 			return 0;
 
@@ -131,7 +131,7 @@ public:
 		glUseProgram(0);		
 	}
 
-	void UpdateRes(KiInt2 res){
+	void UpdateRes(KiVec2 res){
 		UseProgram();
 		glUniform2f(uni_iRes, res.x, res.y);
 		glUseProgram(0);
@@ -141,7 +141,7 @@ public:
 		font_id = f;
 	}
 
-	void UpdateMove(KiInt2 p){
+	void UpdateMove(KiVec2 p){
 		UseProgram();
 		glUniform2f(uni_iMove, p.x, p.y);
 		glUseProgram(0);
@@ -343,13 +343,13 @@ public:
 		return 1;
 	}
 
-	void UpdateMove(KiInt2 p){
+	void UpdateMove(KiVec2 p){
 		UseProgram();
 		glUniform2f(uni_iMove, p.x, p.y);
 		glUseProgram(0);
 	}
 
-	void UpdateRes(KiInt2 res){
+	void UpdateRes(KiVec2 res){
 		UseProgram();
 		glUniform2f(uni_iRes, res.x, res.y);
 		glUseProgram(0);

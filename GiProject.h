@@ -177,7 +177,7 @@ public:
 		return 0;
 	}
 
-	void RenderLayers(KiInt2 move, KiVec2 scale, float zoom){
+	void RenderLayers(KiVec2 move, KiVec2 scale, float zoom){
 		GlslCircleEl *cel = (GlslCircleEl*)paint_cir.data, *tel = cel + paint_cir_count;
 
 		if(!cel)
@@ -235,7 +235,7 @@ public:
 	}
 
 	// Render
-	void Render(KiInt2 move, KiVec2 scale, float zoom){
+	void Render(KiVec2 move, KiVec2 scale, float zoom){
 #ifndef GIPROJECT_RENDER_GLSL
 		RenderLayers(move, scale, zoom);
 #endif
