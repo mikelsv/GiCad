@@ -34,7 +34,7 @@ Versions PROJECTVER[] = {
 
 // Windows
 #include "Glsl.h"
-#include "Graphics.h"
+//#include "Graphics.h"
 #include "GiLayer.h"
 #include "GiProject.h"
 #include "GiCadWindows.h"
@@ -49,7 +49,8 @@ Windows -> Project ->
 int main(int args, char* arg[], char* env[]){
 	// Init
 	print(PROJECTNAME, " v.", PROJECTVER[0].ver, " (", PROJECTVER[0].date, ").\r\n");
-	msvcoremain(__argc, __argv, _environ);
+	//msvcoremain(__argc, __argv, _environ);
+	msvcoremain(args, arg, env);
 
 	// Glfw
 	glfwInit();
@@ -67,7 +68,8 @@ int main(int args, char* arg[], char* env[]){
 
 	// Window
 	GLFWwindow* window;
-	window = glfwCreateWindow(GiCadWindows.size.x, GiCadWindows.size.y, MString(LString() + "GiCad " + PROJECTVER[0].ver), 0, NULL); // 
+	char null = '\0';
+	window = glfwCreateWindow(GiCadWindows.size.x, GiCadWindows.size.y, VString(LString() + "GiCad " + PROJECTVER[0].ver + VString(&null, 1)), 0, NULL); // 
 
 	glfwMakeContextCurrent(window);
 

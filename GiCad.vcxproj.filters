@@ -46,9 +46,6 @@
     <ClInclude Include="Gerber.h">
       <Filter>Заголовочные файлы</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics.h">
-      <Filter>Заголовочные файлы</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
@@ -78,6 +75,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="buildlog.txt" />
+    <Text Include="PROCESS.md" />
   </ItemGroup>
 </Project>
