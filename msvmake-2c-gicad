@@ -37,12 +37,13 @@ release: all
 # Compile Files
 COMPILEFILES= ${PROJECTNAME} \
 	glad \
-	../../opensource/msvcore2/VString \
-	../../opensource/msvcore2/MString
+	../msvcore2/VString \
+	../msvcore2/MString
 
 # Object Files
 OBJECTFILES= \
 	${OBJECTDIR}/${PROJECTNAME}.o \
+	${OBJECTDIR}/glad.o \
 	${OBJECTDIR}/VString.o \
 	${OBJECTDIR}/MString.o
 
