@@ -12,6 +12,8 @@
     <Filter Include="Файлы ресурсов">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+      <ParseFiles>false</ParseFiles>
+      <SourceControlFiles>False</SourceControlFiles>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -44,21 +46,36 @@
     <ClInclude Include="Gerber.h">
       <Filter>Заголовочные файлы</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics.h">
+      <Filter>Заголовочные файлы</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="glsl\gicad.vs">
-      <Filter>Файлы ресурсов</Filter>
-    </None>
-    <None Include="glsl\gicad.fs">
-      <Filter>Файлы ресурсов</Filter>
-    </None>
+    <None Include="README.md" />
     <None Include="glsl\objects.fs">
       <Filter>Файлы ресурсов</Filter>
     </None>
     <None Include="glsl\objects.vs">
       <Filter>Файлы ресурсов</Filter>
     </None>
-    <None Include="README.md" />
+    <None Include="glsl\gicad.fs">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
+    <None Include="glsl\gicad.vs">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
+    <None Include="glsl\menu.fs">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
+    <None Include="glsl\menu.vs">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
+    <None Include="glsl\popup.fs">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
+    <None Include="glsl\popup.vs">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="buildlog.txt" />

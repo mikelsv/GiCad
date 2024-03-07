@@ -115,7 +115,7 @@ private:
 
 	// Commands
 	int cmd_x, cmd_y, cmd_d, cmd_g, cmd_i, cmd_j, cmd_m;
-	int cmd_x2, cmd_y2;
+	int cmd_x2, cmd_y2, cmd_g75;
 
 	// Apertures
 	OList<GrblFileAperture> aps;
@@ -218,6 +218,9 @@ public:
 					if(cmd_g == 1)
 						GiProjectLayerAddPPoi(layer_id, cmd_x / 1000000., cmd_y / 1000000.);
 					else if(cmd_g == 02 || cmd_g == 03){
+						//cmd_i += 1000000.;
+						//cmd_j += 1000000.;
+
 						// G02 to G01
 						double sx = cmd_x2 / 1000000., sy = cmd_y2 / 1000000.;
 						double ex = cmd_x / 1000000., ey = cmd_y / 1000000.;
@@ -227,7 +230,30 @@ public:
 						// Start / end angles
 						double sangle = atan2(sy - cy, sx - cx);
 						double eangle = atan2(ey - cy, ex - cx);
+						bool stop = 0;
+						
+						if(cmd_g == 02 && 0)
+							if(sangle > eangle){
+								double t = sangle;
+								sangle = eangle;
+								eangle = t;
+								stop = 1;
+							}
+							//if(sangle > eangle)
+							//	sangle -= PI;
+						//if(cmd_g == 03)
+						//	if(eangle < sangle)
+						//		eangle += PI;
+
+						if(cmd_g75){
+							cmd_g75 = 0;
+							sangle += PI;
+						}
+
 						int points = int(ceil(abs(eangle - sangle) / (PI / 180)));
+
+						if(stop)
+							points = -1;
 
 						for(int i = 0; i < points + 1; i ++){
 							double angle = sangle + (eangle - sangle) * i / points;
@@ -278,6 +304,9 @@ public:
 				if (cmd_g == 01){
 					//GiProjectLayerAddPath(layer_id);
 				}
+
+				if(cmd_g == 75)
+					cmd_g75 = 1;
 
 				// Comment
 				if(cmd_g == 4)

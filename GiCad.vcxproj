@@ -91,12 +91,17 @@
     <ClInclude Include="GiProject.h" />
     <ClInclude Include="Glsl.h" />
     <ClInclude Include="Gerber.h" />
+    <ClInclude Include="Graphics.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="glsl\objects.fs" />
-    <None Include="glsl\objects.vs" />
     <None Include="glsl\gicad.fs" />
     <None Include="glsl\gicad.vs" />
+    <None Include="glsl\menu.fs" />
+    <None Include="glsl\menu.vs" />
+    <None Include="glsl\objects.fs" />
+    <None Include="glsl\objects.vs" />
+    <None Include="glsl\popup.fs" />
+    <None Include="glsl\popup.vs" />
     <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>

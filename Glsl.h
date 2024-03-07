@@ -153,7 +153,7 @@ public:
 		glUseProgram(0);
 	}
 
-	void UpdateMouseSelect(KiInt2 cur, KiInt2 hold, bool down){
+	void UpdateMouseSelect(KiVec2 cur, KiVec2 hold, bool down){
 		UseProgram();
 		
 		if(down)
@@ -448,11 +448,6 @@ public:
 	}	
 };
 
-class GlslMenu : public MglSimpleGlsl{
-
-
-};
-
 void OpenGLDrawCircle(GLfloat x, GLfloat y, GLfloat radius, MRGB rgb, int a=1, int lines=0){
 	float angle;
 	if(!lines) lines=radius+10;
@@ -468,3 +463,8 @@ void OpenGLDrawCircle(GLfloat x, GLfloat y, GLfloat radius, MRGB rgb, int a=1, i
 	return ;
 }
 
+/*
+https://stackoverflow.com/questions/47297295/actually-using-gl-line-width-when-supported-by-driver
+float vals[2];
+glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, vals);
+*/

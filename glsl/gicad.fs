@@ -78,12 +78,20 @@ bool InMouseRange(inout vec4 fragColor, in vec2 fragCoord){
            //return true;
         }
 
-        if(max(length(cDist), length(sDist)) < length(cDist - sDist)){
-            fragColor.xyz = vec3(0., 1., 0.);
+        // Select box
+        if(max(abs(cDist.x), abs(sDist.x)) < abs(cDist.x - sDist.x) &&
+         max(abs(cDist.y), abs(sDist.y)) < abs(cDist.y - sDist.y) ){
+        //if(abs(sDist.x) < 15 / iZoom){
+            fragColor.xyz = vec3(0., 0., 1.);
             return true;
         }
 
-     if(length(sDist) < 10){
+//        if(max(length(cDist), length(sDist)) < length(cDist - sDist)){
+//            fragColor.xyz = vec3(0., 1., 0.);
+//            return true;
+//        }
+
+     if(length(sDist) < 15 / iZoom){
         fragColor.xyz = vec3(1., 1., 0.);
         return true;
     }
@@ -111,19 +119,8 @@ void DrawPaths(inout vec4 fragColor, in vec2 fragCoord){
 }
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord){
-    // Normalized pixel coordinates (from 0 to 1)
-    vec2 uv = fragCoord/iResolution.xy;
-
-    // Time varying pixel color
-    vec3 col = 0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4));
-    //vec3 col = vec3(1., 0., sin(iTime));
-
-    // Output to screen
-    fragColor = vec4(col,1.0);
-
-    fragColor.x = max(sin(fragCoord.x * .1), sin(fragCoord.y * .1));
-    //fragColor = vec4(1.0, 1.0, 1.0, texture(iChannel0, uv).r);
-    fragColor = texture(iChannel0, uv);
+    // Clear color
+    fragColor = vec4(0.2f, 0.3f, 0.3f, 1.0f);
 
     // Circles
     DrawCircles(fragColor, fragCoord);
@@ -164,7 +161,7 @@ float PrintChar(int c, vec2 p){
     vec2 dFdx = dFdx(p/16.), dFdy = dFdy(p/16.);
     if (p.x<.0|| p.x>1. || p.y<0.|| p.y>1.) return 0.;//vec4(0,0,0,1e5);
     //if (p.x<.25|| p.x>.75 || p.y<0.|| p.y>1.) return vec4(0,0,0,1e5); // strange bug with an old driver
-	return textureGrad( iChannel0, p/16. + fract( vec2(c, 15-c/16) / 16. ), dFdx, dFdy ).x;
+    return textureGrad( iChannel0, p/16. + fract( vec2(c, 15-c/16) / 16. ), dFdx, dFdy ).x;
 }
 
 float PrintFloatP2(vec2 p, float val){
@@ -226,22 +223,22 @@ int text_any[] = int[](1, 70, 80, 83, 111, 111, 114, 100, 105, 110, 97, 116, 101
 void toolBar(inout vec4 fragColor, in vec2 fragCoord){
     vec2 uv = fragCoord/iResolution.xy;
 
-    if(fragCoord.y < 70.){
-        fragColor = vec4(0., 1., 1., 1.);        
+    if(fragCoord.y < 35.){
+        fragColor = vec4(.94, .94, .94, 1.);        
         //fragColor.x += PrintChars((fragCoord - vec2(100., 100.)) / 1. / 70., text_zoom);
 
         //  Zoom
-        fragColor.x += PrintChars(PrintCharsCoord(fragCoord, vec2(0., -10.), 70.), text_zoom);
-        fragColor.x += PrintFloatP2(PrintCharsCoord(fragCoord, vec2(40., -10.), 70.), iZoom);
+        fragColor.xyz -= PrintChars(PrintCharsCoord(fragCoord, vec2(0., -10.), 50.), text_zoom);
+        fragColor.xyz -= PrintFloatP2(PrintCharsCoord(fragCoord, vec2(40., -10.), 50.), iZoom);
 
         // XY
         text_any[1] = 88;
-        fragColor.x += PrintChars(PrintCharsCoord(fragCoord, vec2(200., -10.), 70.), text_any);
-        fragColor.x += PrintFloatP2(PrintCharsCoord(fragCoord, vec2(240., -10.), 70.), iMouse.x + iMove.x / iZoom / xZoom);
+        fragColor.xyz -= PrintChars(PrintCharsCoord(fragCoord, vec2(200., -10.), 50.), text_any);
+        fragColor.xyz -= PrintFloatP2(PrintCharsCoord(fragCoord, vec2(240., -10.), 50.), iMouse.x + iMove.x / iZoom / xZoom);
 
         text_any[1] = 89;
-        fragColor.x += PrintChars(PrintCharsCoord(fragCoord, vec2(500., -10.), 70.), text_any);
-        fragColor.x += PrintFloatP2(PrintCharsCoord(fragCoord, vec2(540., -10.), 70.), iMouse.y + iMove.y / iZoom / xZoom);
+        fragColor.xyz -= PrintChars(PrintCharsCoord(fragCoord, vec2(500., -10.), 50.), text_any);
+        fragColor.xyz -= PrintFloatP2(PrintCharsCoord(fragCoord, vec2(540., -10.), 50.), iMouse.y + iMove.y / iZoom / xZoom);
 
         // Fps
         //fragColor.x += PrintChars((uv - vec2(.50, 0.)) * 10., text_fps);
@@ -256,7 +253,7 @@ void toolBar(inout vec4 fragColor, in vec2 fragCoord){
 
 void drawRing00(inout vec4 fragColor, in vec2 fragCoord){
     float distance  = length(vec2(0., 0.) - fragCoord);
-    float innerRadius = 40;
+    float innerRadius = 45;
     float outerRadius = 50;
 
     if (distance > innerRadius && distance < outerRadius){
@@ -270,7 +267,6 @@ void main(){
 
     // X0Y0 Ring
     drawRing00(fragColor, (gl_FragCoord.xy + iMove.xy) / iZoom / xZoom);
-
 
     // Tools
     toolBar(fragColor, gl_FragCoord.xy);

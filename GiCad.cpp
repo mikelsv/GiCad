@@ -14,6 +14,7 @@
 
 Versions PROJECTVER[] = {
     // new version to up
+	"0.0.0.5", "07.03.2024 09:05",
 	"0.0.0.4", "06.03.2024 10:49",
 	"0.0.0.3", "05.03.2024 10:30",
 	"0.0.0.2", "30.02.2024 08:01",
@@ -33,6 +34,7 @@ Versions PROJECTVER[] = {
 
 // Windows
 #include "Glsl.h"
+#include "Graphics.h"
 #include "GiLayer.h"
 #include "GiProject.h"
 #include "GiCadWindows.h"
@@ -61,6 +63,7 @@ int main(int args, char* arg[], char* env[]){
  //   glfwWindowHint ( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
  //   glfwWindowHint ( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 	//glDisable(GL_DEPTH_TEST);
+	glfwWindowHint(GLFW_SAMPLES, 4);
 
 	// Window
 	GLFWwindow* window;
@@ -75,6 +78,8 @@ int main(int args, char* arg[], char* env[]){
     //glEnable(GL_CULL_FACE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_MULTISAMPLE);
+	glLineWidth(2.0);
 
 	// Debug
 	MsvGlDebug(1, 0);
@@ -82,6 +87,9 @@ int main(int args, char* arg[], char* env[]){
 	// Init windows
 	GiCadWindows.Init();
 	GiWndResize(window, GiCadWindows.size.x, GiCadWindows.size.y);
+
+	GiCadWindows.InsertPopUp(LString() + "Wellcome to GiCad " + PROJECTVER[0].ver + " !");
+	//GiCadWindows.InsertPopUp(LString() + "Wellcome to GiCad " + PROJECTVER[0].ver + " !");
 	
 	// Extender options
 	srand(time());

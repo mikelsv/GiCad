@@ -23,12 +23,6 @@ layout(std140, binding = 2) uniform asda{
 _MenuOptions MenuOptions;
 };
 
-                                 /*
-layout(std430, binding = 3) buffer GiCircles{
-        GiCircle cls[];
-};
-uniform uint GiCirclesCount;   */
-
 struct Menu{
     int id, pos, size;
 };
@@ -89,6 +83,7 @@ void CropRect(inout vec4 rect, float size){
     rect.w -= size;
 }
 
+// Draw
 float PrintChar(int c, vec2 p){
     p.x += .25;
     

@@ -40,6 +40,7 @@ public:
 	// GLSL
 	GlslMain glsl_main;
 	MglMenu glsl_menu;
+	MglPopUp glsl_popup;
 	GlslObjects glsl_objects;
 
 	// Timer
@@ -64,11 +65,13 @@ public:
 	void Init(){
 		glsl_main.Init(size);
 		glsl_menu.Init();
+		glsl_popup.Init();
 		glsl_objects.Init();
 
 		GlslFontTexture.Init();
 		glsl_main.SetFont(GlslFontTexture.GetTexture());
 		glsl_menu.SetFont(GlslFontTexture.GetTexture());
+		glsl_popup.SetFont(GlslFontTexture.GetTexture());
 
 		glsl_main.UpdateZoom(zoom);
 		glsl_objects.UpdateZoom(zoom);
@@ -80,8 +83,11 @@ public:
 		//glsl.SetLayers(tex);
 		//glsl.SetFont(tex);
 
+		// Timer
 		ttime.Init();
 		stime = ttime.dtime();
+
+		glsl_popup.UpdateTime((ttime.dtime() - stime) / 1000);
 	}
 
 	void UpdateFps(){
@@ -101,12 +107,13 @@ public:
 		size = KiInt2(x, y);
 		glsl_main.UpdateRes(size);
 		glsl_menu.UpdateRes(size);
+		glsl_popup.UpdateRes(size);
 		glsl_objects.UpdateRes(size);
 	}
 
 	// Menu
 	void ShowMenu(){
-		glsl_menu.UpdateMouseMenu(KiInt2(mouse[2].cur.x, size.y - mouse[2].cur.y));
+		glsl_menu.UpdateMouseMenu(KiVec2(mouse[2].cur.x, size.y - mouse[2].cur.y));
 
 		glsl_menu.InsertItem(0, "Hello World!");
 		glsl_menu.InsertItem(1, "1234567890");
@@ -119,6 +126,11 @@ public:
 	void HideMenu(){
 		glsl_menu.CleanMenu();
 		glsl_menu.DrawMenu();
+	}
+
+	// Popup
+	void InsertPopUp(VString text, int lifetime = 30){
+		glsl_popup.Insert(text, lifetime);
 	}
 
 	// Render
@@ -135,7 +147,8 @@ public:
 
 		//glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 		glsl_objects.Render(0);
-		glsl_menu.Render(0);
+		glsl_popup.Render((ttime.dtime() - stime) / 1000);
+		//glsl_menu.Render(0);
 		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		
 	}
@@ -253,6 +266,9 @@ static void GiWndMouseClickCallback(GLFWwindow* window, int button, int action, 
 
 			if(GiCadWindows.glsl_menu.IsActive())
 				GiCadWindows.HideMenu();
+
+			GiCadWindows.glsl_popup.OnCLick(KiVec2(GiCadWindows.mouse[2].cur.x, GiCadWindows.size.y - GiCadWindows.mouse[2].cur.y));
+
 		break;
 
 		case GLFW_MOUSE_BUTTON_2:
@@ -362,19 +378,32 @@ void GiWndMouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset
 //	GiCadWindows.mouse_move = KiInt2(GiCadWindows.size.x / 2, GiCadWindows.size.y / 2);
 }
 
+void GiWndDropMessage(VString path, int ok){
+	ILink link(path);
+
+	if(path.size() > 20){
+		//path = link.file;
+		path = path.str(-20);
+	}
+
+	if(ok)
+		GiCadWindows.InsertPopUp(LString() + "Loaded success: " + path);
+	else
+		GiCadWindows.InsertPopUp(LString() + "[WARNING!] Loading fail: " + path);
+}
+
 void GiWndDrop(GLFWwindow* window, int count, const char** paths){
     for (int i = 0; i < count; i++){
 		ILink link(paths[i]);
 		VString file(paths[i]);
 
-		//if(link.ext() == "gbr"){
-		if(file.str(-3) == "gbr"){
-			GiProject.AddGbrFile(paths[i]);
-		}
+		if(file.str(-3) == "gbr")
+			GiWndDropMessage(paths[i], GiProject.AddGbrFile(paths[i]));
 
-		if(file.str(-3) == "drl"){
-			GiProject.AddDrlFile(paths[i]);
-			//GiDrill
-		}		
+		else if(file.str(-3) == "drl")
+			GiWndDropMessage(paths[i], GiProject.AddDrlFile(paths[i]));
+
+		else
+			GiWndDropMessage(paths[i], 0);
 	}
 }
