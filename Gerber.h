@@ -168,13 +168,24 @@ public:
 				if(line.incompareu("%ADD")){ // %ADD10C,0.120000*%
 					VString res[8];
 					int resi = PartLines(line, "%ADD$d$c,$f*%", res);
-					
-					if(resi != 3)
-						return Error(LString() + "Command bad: " + line);
+					int ok = 0;
 
-					if(res[1] == "C")
-						AppAddCircle(res[0].toi(), res[2].tod());
-					else
+					if(resi == 3)
+						if(res[1] == "C"){
+							AppAddCircle(res[0].toi(), res[2].tod());
+							ok = 1;
+						}
+					
+					if(!ok)
+						resi = PartLines(line, "%ADD$d$c,$fX$f*%", res);
+
+					if(resi == 4 && !ok)
+						if(res[1] == "O" || res[1] == "R"){
+							AppAddCircle(res[0].toi(), res[2].tod());
+							ok = 1;
+						}
+
+					if(!ok)
 						return Error(LString() + "Command bad: " + line);
 				}
 			}
@@ -298,6 +309,10 @@ public:
 				break;
 
 			case 'G':
+				// Comment
+				if(val.toi() == 4)
+					return 1;
+
 				cmd_g = val.toi();
 
 				// Lines
@@ -307,12 +322,6 @@ public:
 
 				if(cmd_g == 75)
 					cmd_g75 = 1;
-
-				// Comment
-				if(cmd_g == 4)
-					return 1;
-
-
 
 				break;
 

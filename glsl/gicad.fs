@@ -7,7 +7,7 @@ uniform vec4 iMouse;
 uniform int iFps;
 uniform sampler2D iChannel0;
 
-#define xZoom 4
+#define xZoom 1
 
 // Circle
 struct GiCircle{
@@ -47,10 +47,20 @@ uniform uint GiPathsCount;
 out highp vec4 fragColor;
 
 
+void drawMouseCursor(inout vec4 fragColor, in vec2 fragCoord){
+    float distance  = length(vec2(0., 0.) - fragCoord);
+    float innerRadius = 45;
+    float outerRadius = 50;
+
+    if (distance > innerRadius && distance < outerRadius){
+        fragColor = vec4(1., 1., 1., 1.);
+    }
+}
+
 bool InMouseRange(inout vec4 fragColor, in vec2 fragCoord){
     // Cursor //
-    vec2 cDist = fragCoord.xy - iMouse.xy - iMove / iZoom / xZoom;
-    vec2 sDist = fragCoord.xy - iMouse.zw - iMove / iZoom / xZoom;
+    vec2 cDist = fragCoord.xy - (iMouse.xy + iMove) / iZoom / xZoom;
+    vec2 sDist = fragCoord.xy - (iMouse.zw + iMove) / iZoom / xZoom;
     float mDist = length(cDist);
 
     // Vertical
@@ -118,12 +128,34 @@ void DrawPaths(inout vec4 fragColor, in vec2 fragCoord){
 
 }
 
+float grid(vec2 uv, float battery){
+    //vec2 size = vec2(uv.y, uv.y * uv.y * 0.2) * 0.01;
+    vec2 size = vec2(uv.y * 0. + 10.1, uv.y * 0. + 10.) * 0.01;
+    //uv += vec2(0.0, iTime * 4.0 * (battery + 0.05));
+    uv = abs(fract(uv) - 0.5);
+ 	vec2 lines = smoothstep(size, vec2(0.0), uv);
+ 	lines += smoothstep(size * 5.0, vec2(0.0), uv) * 0.4 * battery;
+    //vec2 lines = smoothstep(size * 1.0, vec2(0.0), uv);
+    return clamp(lines.x + lines.y, 0.0, 3.0);
+}
+
 void mainImage(out vec4 fragColor, in vec2 fragCoord){
     // Clear color
-    fragColor = vec4(0.2f, 0.3f, 0.3f, 1.0f);
+    //fragColor = vec4(0.2f, 0.3f, 0.3f, 1.0f);
+
+    // Grid
+    vec3 col = vec3(0.2f, 0.3f, 0.3f);
+    float power = .5;
+    float grid = grid(fragCoord / 10. + .5, power);
+    col = mix(col, vec3(1.0, 0.5, 1.0), grid);
+    col = mix(vec3(col.r, col.r, col.r) * 0.5, col, power * 0.7);
+    fragColor = vec4(col, 1.0);
 
     // Circles
     DrawCircles(fragColor, fragCoord);
+
+    // Mouse cursor
+    drawMouseCursor(fragColor, fragCoord - (iMouse.xy + iMove) / iZoom);
 
     // Mouse
     if(InMouseRange(fragColor, fragCoord))
@@ -234,11 +266,11 @@ void toolBar(inout vec4 fragColor, in vec2 fragCoord){
         // XY
         text_any[1] = 88;
         fragColor.xyz -= PrintChars(PrintCharsCoord(fragCoord, vec2(200., -10.), 50.), text_any);
-        fragColor.xyz -= PrintFloatP2(PrintCharsCoord(fragCoord, vec2(240., -10.), 50.), iMouse.x + iMove.x / iZoom / xZoom);
+        fragColor.xyz -= PrintFloatP2(PrintCharsCoord(fragCoord, vec2(240., -10.), 50.), (iMouse.x + iMove.x) / iZoom / xZoom);
 
         text_any[1] = 89;
         fragColor.xyz -= PrintChars(PrintCharsCoord(fragCoord, vec2(500., -10.), 50.), text_any);
-        fragColor.xyz -= PrintFloatP2(PrintCharsCoord(fragCoord, vec2(540., -10.), 50.), iMouse.y + iMove.y / iZoom / xZoom);
+        fragColor.xyz -= PrintFloatP2(PrintCharsCoord(fragCoord, vec2(540., -10.), 50.), (iMouse.y + iMove.y) / iZoom / xZoom);
 
         // Fps
         //fragColor.x += PrintChars((uv - vec2(.50, 0.)) * 10., text_fps);

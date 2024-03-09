@@ -14,6 +14,7 @@
 
 Versions PROJECTVER[] = {
     // new version to up
+	"0.0.0.6", "09.03.2024 16:07",
 	"0.0.0.5", "07.03.2024 09:05",
 	"0.0.0.4", "06.03.2024 10:49",
 	"0.0.0.3", "05.03.2024 10:30",
@@ -34,10 +35,11 @@ Versions PROJECTVER[] = {
 
 // Windows
 #include "Glsl.h"
+#include "Gui.h"
 //#include "Graphics.h"
 #include "GiLayer.h"
 #include "GiProject.h"
-#include "GiCadWindows.h"
+#include "GiWindows.h"
 
 /* Structure:
 Windows -> Project ->
@@ -69,7 +71,7 @@ int main(int args, char* arg[], char* env[]){
 	// Window
 	GLFWwindow* window;
 	char null = '\0';
-	window = glfwCreateWindow(GiCadWindows.size.x, GiCadWindows.size.y, VString(LString() + "GiCad " + PROJECTVER[0].ver + VString(&null, 1)), 0, NULL); // 
+	window = glfwCreateWindow(GiCadWindows.size.x, GiCadWindows.size.y, VString(LString() + PROJECTNAME + " " + PROJECTVER[0].ver + VString(&null, 1)), 0, NULL); // 
 
 	glfwMakeContextCurrent(window);
 

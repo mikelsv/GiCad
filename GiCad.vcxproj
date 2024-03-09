@@ -41,6 +41,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <ExecutablePath>./;$(ExecutablePath)</ExecutablePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -86,11 +87,12 @@
     <ClCompile Include="glad.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GiCadWindows.h" />
+    <ClInclude Include="GiWindows.h" />
     <ClInclude Include="GiLayer.h" />
     <ClInclude Include="GiProject.h" />
     <ClInclude Include="Glsl.h" />
     <ClInclude Include="Gerber.h" />
+    <ClInclude Include="Gui.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="glsl\gicad.fs" />

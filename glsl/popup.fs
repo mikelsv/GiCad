@@ -20,7 +20,7 @@ struct MglPopUpOptions{
     vec4 textColor, bgColor, borderColor;
 };
 
-layout(std140, binding = 2) uniform _MglPopUpOptions{
+layout(std140, binding = 5) uniform _MglPopUpOptions{
     MglPopUpOptions opt;
 };
 
@@ -30,13 +30,13 @@ struct PopUp{
     vec4 rect;
 };
 
-layout(std430, binding = 5) buffer PopUpHead{
+layout(std430, binding = 6) buffer PopUpHead{
 	PopUp popup[];
 };
 
 uniform int popupSize;
 
-layout(std430, binding = 6) buffer _MglTextBuffer{
+layout(std430, binding = 7) buffer _MglTextBuffer{
 	int popup_text[];
 };
 

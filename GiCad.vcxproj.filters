@@ -34,9 +34,6 @@
     <ClInclude Include="GiLayer.h">
       <Filter>Заголовочные файлы</Filter>
     </ClInclude>
-    <ClInclude Include="GiCadWindows.h">
-      <Filter>Заголовочные файлы</Filter>
-    </ClInclude>
     <ClInclude Include="GiProject.h">
       <Filter>Заголовочные файлы</Filter>
     </ClInclude>
@@ -44,6 +41,12 @@
       <Filter>Заголовочные файлы</Filter>
     </ClInclude>
     <ClInclude Include="Gerber.h">
+      <Filter>Заголовочные файлы</Filter>
+    </ClInclude>
+    <ClInclude Include="Gui.h">
+      <Filter>Заголовочные файлы</Filter>
+    </ClInclude>
+    <ClInclude Include="GiWindows.h">
       <Filter>Заголовочные файлы</Filter>
     </ClInclude>
   </ItemGroup>

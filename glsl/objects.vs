@@ -7,15 +7,13 @@ uniform vec2 iMove;
 uniform vec2 iResolution;
 uniform float iZoom;
 
-#define xZoom 4
+#define xZoom 1
 
 // Out
 out highp vec4 fragColor;
 out vec4 pointColor;
 
 void main(){
-	gl_Position = vec4((pointCoord.xy - iMove.xy) / iResolution * iZoom * xZoom, 0.0, 1.0);
-
-	pointColor = vec4(1., 1., 0., 0.);
+	gl_Position = vec4(((pointCoord.xy * iZoom * xZoom - iMove.xy ) / iResolution * 2. - 1), 0.0, 1.0);
 	pointColor = colorCoord;
 }
