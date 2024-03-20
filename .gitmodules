@@ -1,3 +1,7 @@
 [submodule "msvcore2"]
 	path = ../msvcore2
 	url = git@github.com:mikelsv/msvcore2.git
+
+[submodule "imgui"]
+	path = imgui
+	url = https://github.com/ocornut/imgui.git

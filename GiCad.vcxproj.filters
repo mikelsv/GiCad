@@ -1,15 +1,18 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Файлы исходного кода">
+    <Filter Include="imgui">
+      <UniqueIdentifier>{b1147e1d-ee62-46be-8942-4277bd4487f5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Заголовочные файлы">
+    <Filter Include="Header files">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Файлы ресурсов">
+    <Filter Include="Resources">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
       <ParseFiles>false</ParseFiles>
@@ -18,63 +21,90 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GiCad.cpp">
-      <Filter>Файлы исходного кода</Filter>
+      <Filter>Source files</Filter>
     </ClCompile>
     <ClCompile Include="glad.cpp">
-      <Filter>Файлы исходного кода</Filter>
+      <Filter>Source files</Filter>
     </ClCompile>
     <ClCompile Include="..\msvcore2\MString.cpp">
-      <Filter>Файлы исходного кода</Filter>
+      <Filter>Source files</Filter>
     </ClCompile>
     <ClCompile Include="..\msvcore2\VString.cpp">
-      <Filter>Файлы исходного кода</Filter>
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="tinyfiledialogs.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\imgui.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\imgui_widgets.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\imgui_tables.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\imgui_draw.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\backends\imgui_impl_glfw.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\backends\imgui_impl_opengl3.cpp">
+      <Filter>imgui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GiLayer.h">
-      <Filter>Заголовочные файлы</Filter>
+      <Filter>Header files</Filter>
     </ClInclude>
     <ClInclude Include="GiProject.h">
-      <Filter>Заголовочные файлы</Filter>
+      <Filter>Header files</Filter>
     </ClInclude>
     <ClInclude Include="Glsl.h">
-      <Filter>Заголовочные файлы</Filter>
+      <Filter>Header files</Filter>
     </ClInclude>
     <ClInclude Include="Gerber.h">
-      <Filter>Заголовочные файлы</Filter>
+      <Filter>Header files</Filter>
     </ClInclude>
     <ClInclude Include="Gui.h">
-      <Filter>Заголовочные файлы</Filter>
+      <Filter>Header files</Filter>
     </ClInclude>
     <ClInclude Include="GiWindows.h">
-      <Filter>Заголовочные файлы</Filter>
+      <Filter>Header files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
     <None Include="glsl\objects.fs">
-      <Filter>Файлы ресурсов</Filter>
+      <Filter>Resources</Filter>
     </None>
     <None Include="glsl\objects.vs">
-      <Filter>Файлы ресурсов</Filter>
+      <Filter>Resources</Filter>
     </None>
     <None Include="glsl\gicad.fs">
-      <Filter>Файлы ресурсов</Filter>
+      <Filter>Resources</Filter>
     </None>
     <None Include="glsl\gicad.vs">
-      <Filter>Файлы ресурсов</Filter>
+      <Filter>Resources</Filter>
     </None>
     <None Include="glsl\menu.fs">
-      <Filter>Файлы ресурсов</Filter>
+      <Filter>Resources</Filter>
     </None>
     <None Include="glsl\menu.vs">
-      <Filter>Файлы ресурсов</Filter>
+      <Filter>Resources</Filter>
     </None>
     <None Include="glsl\popup.fs">
-      <Filter>Файлы ресурсов</Filter>
+      <Filter>Resources</Filter>
     </None>
     <None Include="glsl\popup.vs">
-      <Filter>Файлы ресурсов</Filter>
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="glsl\gui.fs">
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="glsl\gui.vs">
+      <Filter>Resources</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

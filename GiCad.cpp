@@ -14,6 +14,7 @@
 
 Versions PROJECTVER[] = {
     // new version to up
+	"0.0.0.7", "20.03.2024 11:57",
 	"0.0.0.6", "09.03.2024 16:07",
 	"0.0.0.5", "07.03.2024 09:05",
 	"0.0.0.4", "06.03.2024 10:49",
@@ -22,10 +23,21 @@ Versions PROJECTVER[] = {
     "0.0.0.1", "26.02.2024 08:51" // (Moscow time)
 };
 
+char _msv_zero_code = '\0';
+VString _msv_zero_str(&_msv_zero_code, 1);
+
 // GL3W
 #include "glad/glad.h"
 #include <GLFW/glfw3.h>
 #pragma comment(lib, "glfw3dll.lib")
+
+// Imgui
+#include "imgui.h"
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_opengl3.h"
+
+// tinyfiledialogs
+#include "tinyfiledialogs.h"
 
 // OpenGL
 #include "../msvcore2/opengl/mgl.h"
@@ -69,9 +81,16 @@ int main(int args, char* arg[], char* env[]){
 	glfwWindowHint(GLFW_SAMPLES, 4);
 
 	// Window
-	GLFWwindow* window;
-	char null = '\0';
-	window = glfwCreateWindow(GiCadWindows.size.x, GiCadWindows.size.y, VString(LString() + PROJECTNAME + " " + PROJECTVER[0].ver + VString(&null, 1)), 0, NULL); // 
+	GLFWwindow* window;	
+	window = glfwCreateWindow((GLsizei)GiCadWindows.screen.x, (GLsizei)GiCadWindows.screen.y, VString(LString() + PROJECTNAME + " " + PROJECTVER[0].ver + _msv_zero_str), 0, NULL); // 
+	
+	// Position
+	if(GiCadWindows.pos.x >= 0){
+		glfwSetWindowPos(window, GiCadWindows.pos.x, GiCadWindows.pos.y);
+	}
+
+	if(GiCadWindows.maximized)
+		glfwMaximizeWindow(window);
 
 	glfwMakeContextCurrent(window);
 
@@ -89,11 +108,22 @@ int main(int args, char* arg[], char* env[]){
 	MsvGlDebug(1, 0);
 
 	// Init windows
-	GiCadWindows.Init();
-	GiWndResize(window, GiCadWindows.size.x, GiCadWindows.size.y);
+	GiCadWindows.Init(window);
+	GiWindowsUpdateTitle();
+	GiWndResize(window, (GLsizei)GiCadWindows.screen.x, (GLsizei)GiCadWindows.screen.y);
 
+	// Initialize ImGUI
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& imgui = ImGui::GetIO(); (void)imgui;
+	ImGui::StyleColorsDark();
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init("#version 460");
+
+	// Design
 	GiCadWindows.InsertPopUp(LString() + "Wellcome to GiCad " + PROJECTVER[0].ver + " !");
-	//GiCadWindows.InsertPopUp(LString() + "Wellcome to GiCad " + PROJECTVER[0].ver + " !");
+	GiCadWindows.GuiAddHeaderMenu();
+	GiCadWindows.GuiAddTreeList();
 	
 	// Extender options
 	srand(time());
@@ -105,6 +135,12 @@ int main(int args, char* arg[], char* env[]){
 	glfwSetCursorPosCallback(window, GiWndMouseMotionCallback);
 	glfwSetScrollCallback(window, GiWndMouseScrollCallback);
 	glfwSetDropCallback(window, GiWndDrop);
+	glfwSetWindowCloseCallback(window, GiWndClose);
+
+	// Variables to be changed in the ImGUI window
+	bool drawTriangle = true;
+	float size = 1.0f;
+	float color[4] = { 0.8f, 0.3f, 0.02f, 1.0f };
 
 	// Process
 	while (!glfwWindowShouldClose(window)) {
@@ -112,6 +148,18 @@ int main(int args, char* arg[], char* env[]){
 		GiWndUpdate(window, 0);
 //		MaticalsOpenGl.UpdateTime(delta);
 		GiWndRenderScene(window, 0);
+
+
+		// Tell OpenGL a new frame is about to begin
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		GuiRender();
+
+		// Renders the ImGUI elements
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		//glsl.Render(draw_text.);
 
@@ -140,10 +188,13 @@ int main(int args, char* arg[], char* env[]){
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
+
+	// Deletes all ImGUI instances
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 	
 	glfwDestroyWindow(window);
-
-	GiCadWindows.SaveConfig();
 
 	return 0;
 }

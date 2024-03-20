@@ -226,12 +226,10 @@ public:
 
 class GlslObjectsColor{
 public:
-	KiVec3 color;
+	KiVec4 color;
 	
-	void SetColor(MRGB rgb){
-		color.x = rgb.red / 255.;
-		color.y = rgb.green / 255.;
-		color.z = rgb.blue / 255.;
+	void SetColor(KiVec4 col){
+		color = col;
 	}
 
 };
@@ -417,7 +415,7 @@ public:
 
 			glVertexAttribPointer(
 			   1,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-			   3,                  // size
+			   4,                  // size
 			   GL_FLOAT,           // type
 			   GL_FALSE,           // normalized?
 			   0,                  // stride

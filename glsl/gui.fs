@@ -9,35 +9,31 @@ uniform sampler2D iFont;
 // Out
 out highp vec4 fragColor;
 
-struct MglPopUpOptions{
-    // Size
-    float fontSize, letterWidth;    
-    float borderSize, freeSize;
-    float spaceHeight;
-    float showTime, hideTime;
+struct MglGuiOptions{
+	float fontSize, letterWidth;
+	float borderSize, freeSize;
+	//float unk[3];
 
-    // Colors
-    vec4 textColor, bgColor, borderColor;
+	vec4 textColor, bgColor, borderColor;
 };
 
-layout(std140, binding = 5) uniform _MglPopUpOptions{
-    MglPopUpOptions opt;
+layout(std140, binding = 8) uniform _MglGuiOptions{
+    MglGuiOptions opt;
 };
 
-struct PopUp{
-    int id, text_pos, text_size, _unk;
-    float stime, etime;
-    vec4 rect;
+struct MglGuUpHead{
+	int id, text_pos, text_size, _unk;
+	vec4 rect;
 };
 
-layout(std430, binding = 6) buffer PopUpHead{
-	PopUp popup[];
+layout(std430, binding = 9) buffer _MglGuUpHead{
+	MglGuUpHead gui[];
 };
 
-uniform int popupSize;
+uniform int guiSize;
 
-layout(std430, binding = 7) buffer _MglTextBuffer{
-	int popup_text[];
+layout(std430, binding = 10) buffer _MglTextBuffer{
+	int mgl_text[];
 };
 
 // Rect functions
@@ -73,30 +69,30 @@ float PrintChar(int c, vec2 p){
 	return textureGrad(iFont, p / 16. + fract(vec2(c, 15 - c / 16) / 16.), dFdx, dFdy).x;
 }
 
-void DrawPopupText(inout vec4 fragColor, vec2 coord, int id){
-    int size = popup[id].text_size;
-    float col = 0;
+void DrawGuiText(inout vec4 fragColor, vec2 coord, int id){
+    int size = gui[id].text_size;
 
     for(int i = 0; i < size; i ++){
-        int c = popup_text[popup[id].text_pos + i];
-        col += PrintChar(c, (coord - vec2(float(i) * opt.letterWidth, 0.)) / opt.fontSize);    
+        int c = mgl_text[gui[id].text_pos + i];
+        fragColor.xyz -= PrintChar(c, (coord - vec2(float(i) * opt.letterWidth, 0.)) / opt.fontSize);    
     }
-
-    fragColor = mix(fragColor, opt.textColor, col);
 }
 
 void mainImage(inout vec4 fragColor, in vec2 fragCoord){
-    if(popupSize <= 0)
+    if(guiSize <= 0)
         return;
 
     // Get item in rect
     vec2 coord;
 
-    for(int i = 0; i < popupSize; i ++){
+    for(int i = 0; i < guiSize; i ++){
+        vec4 rect = gui[i].rect;
+
+    /*
         if(popup[i].stime > iTime || popup[i].etime < iTime)
             continue;
 
-        vec4 rect = popup[i].rect;
+        
 
         // Move up
         if(iTime - popup[i].stime < opt.showTime)
@@ -107,7 +103,7 @@ void mainImage(inout vec4 fragColor, in vec2 fragCoord){
        if(popup[i].etime - iTime < opt.hideTime){
             //rect = MoveRect(rect, vec2(iTime * 5., 0.));
             rect = MoveRect(rect, -sin(vec2((popup[i].etime - iTime) - opt.hideTime, 0.)) * 400.);
-        }
+        }*/
 
 
         //rect = MoveRect(rect, - vec2(0., popup[i].etime));
@@ -115,7 +111,7 @@ void mainImage(inout vec4 fragColor, in vec2 fragCoord){
         // In rect
         if(InRect(fragCoord, rect, coord)){
             // Set background
-            fragColor = opt.bgColor;            
+            fragColor = opt.bgColor;
             CropRect(rect, opt.borderSize);
 
             // In border
@@ -131,7 +127,7 @@ void mainImage(inout vec4 fragColor, in vec2 fragCoord){
                 return ;
             
             // Draw
-            DrawPopupText(fragColor, coord, i);
+            DrawGuiText(fragColor, coord, i);
         }        
     }
 }

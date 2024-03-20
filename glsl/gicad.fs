@@ -128,31 +128,31 @@ void DrawPaths(inout vec4 fragColor, in vec2 fragCoord){
 
 }
 
-float grid(vec2 uv, float battery){
-    //vec2 size = vec2(uv.y, uv.y * uv.y * 0.2) * 0.01;
-    vec2 size = vec2(uv.y * 0. + 10.1, uv.y * 0. + 10.) * 0.01;
-    //uv += vec2(0.0, iTime * 4.0 * (battery + 0.05));
-    uv = abs(fract(uv) - 0.5);
- 	vec2 lines = smoothstep(size, vec2(0.0), uv);
- 	lines += smoothstep(size * 5.0, vec2(0.0), uv) * 0.4 * battery;
-    //vec2 lines = smoothstep(size * 1.0, vec2(0.0), uv);
-    return clamp(lines.x + lines.y, 0.0, 3.0);
+void drawGrid(inout vec4 fragColor, in vec2 fragCoord){
+    float gridSize = 100.;
+
+    ivec2 pixelCoord = ivec2(fragCoord.xy);
+    if (mod(pixelCoord.x, gridSize) <= .1 || mod(pixelCoord.y, gridSize) <= .1){
+        fragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    }
 }
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord){
-    // Clear color
-    //fragColor = vec4(0.2f, 0.3f, 0.3f, 1.0f);
+    // Normalized pixel coordinates (from 0 to 1)
+    vec2 uv = fragCoord/iResolution.xy;
 
-    // Grid
-    vec3 col = vec3(0.2f, 0.3f, 0.3f);
-    float power = .5;
-    float grid = grid(fragCoord / 10. + .5, power);
-    col = mix(col, vec3(1.0, 0.5, 1.0), grid);
-    col = mix(vec3(col.r, col.r, col.r) * 0.5, col, power * 0.7);
-    fragColor = vec4(col, 1.0);
+    // Time varying pixel color
+    vec3 col = 0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4));
 
-    // Circles
-    DrawCircles(fragColor, fragCoord);
+    // Output to screen
+    fragColor = vec4(col * .5, 1.0);
+
+    // Draw grid
+    drawGrid(fragColor, fragCoord);
+
+    if(fragCoord.x < 0)
+        fragColor -= vec4(.50);
+
 
     // Mouse cursor
     drawMouseCursor(fragColor, fragCoord - (iMouse.xy + iMove) / iZoom);

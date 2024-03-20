@@ -29,8 +29,10 @@ public:
 class GiCadWindows{
 public:
 	// Screen
-	KiVec2 size, move;//, move, mouse, mouse_move;
+	KiVec2 screen, pos, move;//, move, mouse, mouse_move;
 	float zoom;
+	bool maximized, close_window;
+	GLFWwindow* window;
 	
 	// Mouse
 	GiCadWindowsMouse mouse[3];
@@ -52,31 +54,41 @@ public:
 	double fps_time;
 	int fps, fps_count;
 	
-	// Nww
+	// New
 	GiCadWindows(){
-		size = KiInt2(1024, 768);
+		screen = KiInt2(1024, 768);
+		pos = KiInt2(-1, -1);
 		move = KiInt2(0, 0);
 		//mouse = KiInt2(0, 0);
+
 		zoom = 1;
 		fps_time = 0;
+		close_window = 0;
+
+		// Load config
+		LoadCongig();
 	}
 
-	void Init(){
-		glsl_main.Init(size);
+	void Init(GLFWwindow *wnd){
+		window = wnd;
+
+		glsl_main.Init(screen);
+		glsl_gui.Init();
 		glsl_menu.Init();
 		glsl_popup.Init();
 		glsl_objects.Init();
 
 		GlslFontTexture.Init();
 		glsl_main.SetFont(GlslFontTexture.GetTexture());
+		glsl_gui.SetFont(GlslFontTexture.GetTexture());
 		glsl_menu.SetFont(GlslFontTexture.GetTexture());
 		glsl_popup.SetFont(GlslFontTexture.GetTexture());
 
 		glsl_main.UpdateZoom(zoom);
 		glsl_objects.UpdateZoom(zoom);
 
-		MaticalsOpenGl.width = size.x;
-		MaticalsOpenGl.height = size.y;
+		MaticalsOpenGl.width = screen.x;
+		MaticalsOpenGl.height = screen.y;
 		
 		//CreateFrameBuffer(tex, fbo);
 		//glsl.SetLayers(tex);
@@ -102,12 +114,34 @@ public:
 		}
 	}
 
-	void Resize(int x, int y){
-		size = KiInt2(x, y);
-		glsl_main.UpdateRes(size);
-		glsl_menu.UpdateRes(size);
-		glsl_popup.UpdateRes(size);
-		glsl_objects.UpdateRes(size);
+	// Set
+	void SetScreen(int x, int y, bool m){
+		screen = KiInt2(x, y);
+		maximized = m;
+
+		glsl_main.UpdateRes(screen);
+		glsl_gui.UpdateRes(screen);
+		glsl_menu.UpdateRes(screen);
+		glsl_popup.UpdateRes(screen);		
+		glsl_objects.UpdateRes(screen);
+	}
+
+	void SetZoom(float z){
+		zoom = z;
+
+		glsl_main.UpdateZoom(zoom);
+		
+
+		//
+		glsl_objects.UpdateZoom(zoom);
+		
+	}
+
+	void SetMove(KiVec2 m){
+		move = m;
+
+		glsl_main.UpdateMove(move);
+		glsl_objects.UpdateMove(move);
 	}
 
 	// Gui
@@ -117,9 +151,108 @@ public:
 		glsl_gui.InsertMenu(GIGUI_HMENU_HELP, "Help");
 	}
 
+	void GuiAddTreeList(){
+		//glsl_gui.InsertTree(GIGUI_TREE_MAIN, "0, 10, 100, -20");
+	//	glsl_gui.AddTreeItem(GIGUI_TREE_LAYERS);
+//		glsl_gui.SetTreeSubItem(
+
+
+	}
+
+	void CallGui(int id){
+		// Menu
+		if(id == GIGUI_HMENU_FILE)
+			ShowMenuFile();
+		if(id == GIGUI_HMENU_VIEW)
+			ShowMenuView();
+		if(id == GIGUI_HMENU_HELP)
+			ShowMenuHelp();
+
+		// File
+		if(id == GIGUI_MENU_PROJECT_NEW)
+			GiProject.NewProject();
+
+		if(id == GIGUI_MENU_PROJECT_OPEN)
+			GiProject.OpenProject();
+
+		if(id == GIGUI_MENU_PROJECT_EXIT)
+			close_window = 1;
+			
+		// View
+		if(id == GIGUI_HMENU_VIEW_RESET){
+			SetZoom(1);
+			SetMove(0);
+		}
+
+		if(id == GIGUI_HMENU_VIEW_100P){
+			KiVec4 rect = GiProject.GetLayersRect();
+
+			if(rect.IsNull())
+				return ;
+
+			float width =  rect.z - rect.x, height = rect.w - rect.y;
+			float scale = min(screen.x / width, screen.y / height);
+
+			SetZoom(scale);
+			SetMove(KiVec2(rect.x * scale - (screen.x - width * scale) / 2, rect.y * scale - (screen.y - height * scale) / 2));
+		}
+
+	}
+
+	void ResetView() {
+		SetZoom(1);
+		SetMove(0);
+	}
+
+	void ResetView100p() {
+		KiVec4 rect = GiProject.GetLayersRect();
+
+		if (rect.IsNull())
+			return;
+
+		float width = rect.z - rect.x, height = rect.w - rect.y;
+		float scale = min(screen.x / width, screen.y / height);
+
+		SetZoom(scale);
+		SetMove(KiVec2(rect.x * scale - (screen.x - width * scale) / 2, rect.y * scale - (screen.y - height * scale) / 2));
+	}
+
+	void ShowMenuFile(){
+		glsl_menu.CleanMenu();
+		
+		glsl_menu.InsertItem(GIGUI_MENU_PROJECT_NEW, "New project");
+		glsl_menu.InsertItem(GIGUI_MENU_PROJECT_OPEN, "Open project");
+		glsl_menu.InsertItem(GIGUI_MENU_PROJECT_SAVE, "Save project");
+		glsl_menu.InsertItem(GIGUI_MENU_PROJECT_SAVEAS, "Save project as");
+		glsl_menu.InsertItem(GIGUI_MENU_PROJECT_EXIT, "Exit");
+
+		glsl_menu.UpdateMouseMenu(KiVec2(mouse[2].cur.x, screen.y - mouse[2].cur.y));
+		glsl_menu.DrawMenu();
+	}
+
+	void ShowMenuView(){
+		glsl_menu.CleanMenu();
+		
+		glsl_menu.InsertItem(GIGUI_HMENU_VIEW_RESET, "Reset view");
+		glsl_menu.InsertItem(GIGUI_HMENU_VIEW_100P, "100%");
+
+		glsl_menu.UpdateMouseMenu(KiVec2(mouse[2].cur.x, screen.y - mouse[2].cur.y));
+		glsl_menu.DrawMenu();
+	}
+
+	void ShowMenuHelp(){
+		glsl_menu.CleanMenu();
+		
+		glsl_menu.InsertItem(GIGUI_HMENU_HELP_ABOUT, "About GiCad");
+		glsl_menu.InsertItem(GIGUI_HMENU_HELP_SOURCE, "Source");
+
+		glsl_menu.UpdateMouseMenu(KiVec2(mouse[2].cur.x, screen.y - mouse[2].cur.y));
+		glsl_menu.DrawMenu();
+	}
+
 	// Menu
 	void ShowMenu(){
-		glsl_menu.UpdateMouseMenu(KiVec2(mouse[2].cur.x, size.y - mouse[2].cur.y));
+		glsl_menu.UpdateMouseMenu(KiVec2(mouse[2].cur.x, screen.y - mouse[2].cur.y));
 
 		glsl_menu.InsertItem(0, "Hello World!");
 		glsl_menu.InsertItem(1, "1234567890");
@@ -147,33 +280,61 @@ public:
 		}
 
 		//
-		GiProject.Render(move, KiVec2(size.x, size.y), zoom);
+		//GiProject.Render(move, KiVec2(screen.x, screen.y), zoom);
 
 		glsl_main.Render((ttime.dtime() - stime) / 1000);
+		glsl_gui.Render((ttime.dtime() - stime) / 1000);
 
 		//glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 		glsl_objects.Render(0);
 		glsl_popup.Render((ttime.dtime() - stime) / 1000);
-		//glsl_menu.Render(0);
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		
+		glsl_menu.Render(0);
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);		
 	}
 
 	void LoadCongig(){
+		MString data = LoadFile("GiCad.cfg");
+		XDataCont json(data);
 
+		pos.x = json["screen.px"].toi();
+		pos.y = json["screen.py"].toi();
+		screen.x = json["screen.x"].toi();
+		screen.y = json["screen.y"].toi();
+		maximized = json["screen.max"].toi();
 
+		if(screen.IsNull()){
+			screen = KiInt2(1024, 768);
+			pos.x = -1;
+		}
 	}
 
 	void SaveConfig(){
+		KiInt2 pos;
+		glfwGetWindowPos(window, &pos.x, &pos.y);
+		int maximized = glfwGetWindowAttrib(window, GLFW_MAXIMIZED);
 
+		JsonEncode json;
 
+		json.Up("screen");
+		json("x", itos(screen.x));
+		json("y", itos(screen.y));
+		json("px", itos(pos.x));
+		json("py", itos(pos.y));	
+		json("max", itos(maximized));
 
+		json.Save("GiCad.cfg");
+	}
+
+	~GiCadWindows(){
 	}
 
 } GiCadWindows;
 
 static void GiWndUpdate(GLFWwindow* window, float delta){
-	GiCadWindows.UpdateFps();	
+	GiCadWindows.UpdateFps();
+
+	if(GiCadWindows.close_window)
+		glfwSetWindowShouldClose(window, 1);
 
 	//std::cout << "delta:"<<delta<< std::endl;
 //	if (keyArr[GLFW_KEY_ESCAPE])
@@ -183,57 +344,24 @@ static void GiWndUpdate(GLFWwindow* window, float delta){
 }
 
 static void GiWndRenderScene(GLFWwindow* window, float delta){
-	//glClearColor(0.90, 0.50, 0.30, 0.0);
-
 	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    //glClear(GL_COLOR_BUFFER_BIT);
-
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  
 
-	/*
-	glColor3f(1, 1, 1);
-
-	glBegin(GL_LINE_LOOP);
-	glVertex2f(0.25, 0.25);
-	glVertex2f(0.75, 0.25);
-	glVertex2f(0.75, 0.75);
-	glVertex2f(0.25, 0.75);
-	glEnd();
-	glFlush();
-
-	glColor3f(0.90, 0.50, 0.30);
-
-	glBegin(GL_POLYGON);
-	glVertex2f(0.05, 0.05);
-	glVertex2f(0.90, 0.25);
-	glVertex2f(0.95, 0.30);
-	glVertex2f(0.99, 0.35);
-	glVertex2f(0.75, 0.75);
-	glVertex2f(0.25, 0.75);
-	glEnd();
-	glFlush();
-	*/
-
 	GiCadWindows.Render();
-
-	//render();
 }
 
 static void GiWndResize(GLFWwindow* window, int w, int h){
-    if (h < 1){
-		//exit(0);
-        //h = 1;
+    if (w < 1 || h < 1){
 		return ;
-	}/*
-
-	
+	}	
 
 	if(MaticalsOpenGl.IsDisableResize())
 		return ;
-		*/
 
-	glViewport ( 0, 0, (GLsizei)w, (GLsizei)h );
-	GiCadWindows.Resize(w, h);
+	int maximized = glfwGetWindowAttrib(window, GLFW_MAXIMIZED);
+
+	glViewport(0, 0, (GLsizei)w, (GLsizei)h);
+	GiCadWindows.SetScreen(w, h, maximized);
 
 	/*
 	glViewport(0, 0, w, h);
@@ -258,10 +386,16 @@ static void GiWndResize(GLFWwindow* window, int w, int h){
 
 static void GiWndKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods){
 	int on_title = 0;
-
 }
 
 static void GiWndMouseClickCallback(GLFWwindow* window, int button, int action, int mods){
+	// ImGui
+	ImGui::GetIO().MouseDown[button] = action;
+	
+	
+	KiVec2 click = KiVec2(GiCadWindows.mouse[2].cur.x, GiCadWindows.screen.y - GiCadWindows.mouse[2].cur.y);
+	int clicked = 0;
+
 	switch (button) {
 		case GLFW_MOUSE_BUTTON_1:
 			GiCadWindows.mouse[0].Click(action);
@@ -270,10 +404,16 @@ static void GiWndMouseClickCallback(GLFWwindow* window, int button, int action, 
 			//GiCadWindows.mouse_down[1] = action;
 			//GiCadWindows.glsl.UpdateMouseSelect(GiCadWindows.mouse[0].cur, );
 
-			if(GiCadWindows.glsl_menu.IsActive())
-				GiCadWindows.HideMenu();
+			if(GiCadWindows.glsl_menu.IsActive() && !action){
+				GiCadWindows.CallGui(clicked = GiCadWindows.glsl_menu.OnClick(click));
 
-			GiCadWindows.glsl_popup.OnCLick(KiVec2(GiCadWindows.mouse[2].cur.x, GiCadWindows.size.y - GiCadWindows.mouse[2].cur.y));
+				GiCadWindows.HideMenu();
+			}
+
+			if(!clicked && !action)
+				GiCadWindows.CallGui(GiCadWindows.glsl_gui.OnClick(click));
+
+			GiCadWindows.glsl_popup.OnClick(KiVec2(GiCadWindows.mouse[2].cur.x, GiCadWindows.screen.y - GiCadWindows.mouse[2].cur.y));
 
 		break;
 
@@ -298,10 +438,14 @@ static void GiWndMouseClickCallback(GLFWwindow* window, int button, int action, 
 }
 
 static void GiWndMouseMotionCallback(GLFWwindow* window, double x, double y){
+	ImGui::GetIO().MousePos = ImVec2(x, y);
+
+	// Вы можете использовать функции ImGui, такие как ImGui::IsMouseHoveringWindow() или ImGui::IsMouseHoveringAnyWindow(), чтобы определить, находится ли курсор мыши над окном ImGui или любым другим элементом интерфейса.
+	
 	//MaticalsOpenGl.SetMouse(KiInt2(x, y));
 
 	// Left button
-	GiCadWindows.mouse[0].cur = KiVec2(x, GiCadWindows.size.y - y) / GISCREENZOOM;
+	GiCadWindows.mouse[0].cur = KiVec2(x, GiCadWindows.screen.y - y) / GISCREENZOOM;
 	GiCadWindows.glsl_main.UpdateMouseSelect(GiCadWindows.mouse[0].cur, GiCadWindows.mouse[0].hold, GiCadWindows.mouse[0].down);
 
 	// Center button
@@ -330,7 +474,7 @@ static void GiWndMouseMotionCallback(GLFWwindow* window, double x, double y){
 	GiCadWindows.mouse[2].hold = KiInt2(x, y);
 
 	if(GiCadWindows.glsl_menu.IsActive())
-		GiCadWindows.glsl_menu.UpdateMouse(KiInt2(x, GiCadWindows.size.y - y));
+		GiCadWindows.glsl_menu.UpdateMouse(KiInt2(x, GiCadWindows.screen.y - y));
 
 	//print("Mouse ", itos(GiCadWindows.mouse[2].cur.x), "\r\n");
 
@@ -359,12 +503,12 @@ void GiWndMouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset
 		zoom = max(GICAD_ZOOM_MIN, (1 - 1 / 3.0) * GiCadWindows.zoom);
 
 	//KiVec2 size = KiVec2(GiCadWindows.size);
-	KiVec2 move = (GiCadWindows.size / GiCadWindows.zoom - GiCadWindows.size / zoom) / 2.;
+	KiVec2 move = (GiCadWindows.screen / GiCadWindows.zoom - GiCadWindows.screen / zoom) / 2.;
 	//GiCadWindows.move = GiCadWindows.move + (GiCadWindows.size / GiCadWindows.zoom - GiCadWindows.size / zoom) / 2.;
 	
 
-	float center_x = GiCadWindows.size.x / 2;
-	float center_y = GiCadWindows.size.y / 2;
+	float center_x = GiCadWindows.screen.x / 2;
+	float center_y = GiCadWindows.screen.y / 2;
 	//GiCadWindows.move = KiInt2(GiCadWindows.move.x * GiCadWindows.zoom / zoom, GiCadWindows.move.y * GiCadWindows.zoom / zoom);
 	
 	
@@ -372,14 +516,10 @@ void GiWndMouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset
 	//GiCadWindows.move -= KiInt2(xpos * yoffset, 0);
 	//GiCadWindows.move += KiInt2((xpos - center_x) * GiCadWindows.zoom / zoom, (ypos - center_y) * GiCadWindows.zoom / zoom);
 
-	GiCadWindows.zoom = zoom;
+	//GiCadWindows.zoom = zoom;
 
-	GiCadWindows.glsl_main.UpdateZoom(GiCadWindows.zoom);
-	GiCadWindows.glsl_main.UpdateMove(GiCadWindows.move);
+	GiCadWindows.SetZoom(zoom);
 
-	//
-	GiCadWindows.glsl_objects.UpdateZoom(GiCadWindows.zoom);
-	GiCadWindows.glsl_objects.UpdateMove(GiCadWindows.move);
 
 	//glfwSetCursorPos(window, GiCadWindows.size.x / 2, GiCadWindows.size.y / 2);
 //	GiCadWindows.mouse_move = KiInt2(GiCadWindows.size.x / 2, GiCadWindows.size.y / 2);
@@ -413,4 +553,100 @@ void GiWndDrop(GLFWwindow* window, int count, const char** paths){
 		else
 			GiWndDropMessage(paths[i], 0);
 	}
+}
+
+void GiWndClose(GLFWwindow* window){
+	GiCadWindows.SaveConfig();
+}
+
+// Windows call
+void GiWindowsUpdateTitle(){
+	glfwSetWindowTitle(GiCadWindows.window, VString(LString() + GiProject.GetProjectName() + " - " + PROJECTNAME + " " + PROJECTVER[0].ver + _msv_zero_str));
+}
+
+void GiWindowsLayerInsertItem(int id, int active, MRGB color, VString Text){
+		
+	//GiCadWindows.glsl_gui.InsertList
+}
+
+void GiWindowsClose() {
+	GiCadWindows.close_window = 1;
+}
+
+
+void GuiMenuRender() {
+	if (ImGui::BeginMainMenuBar()) {
+		ImGui::SetWindowFontScale(3.0f);
+
+		if (ImGui::BeginMenu("File")) {
+			if (ImGui::MenuItem("New Projects", "Ctrl+N"))
+				GiProject.NewProject();
+
+			if (ImGui::MenuItem("Open Project", "Ctrl+O"))
+				GiProject.OpenProject();
+
+			if (ImGui::MenuItem("Save project", "Ctrl+S")){}
+			if (ImGui::MenuItem("Save project as", "Ctrl+Shift+S")) {}
+
+			if (ImGui::MenuItem("Exit", ""))
+				GiWindowsClose();
+
+			ImGui::EndMenu();
+		}
+		
+		// Edit
+		if (ImGui::BeginMenu("Edit")){
+			if (ImGui::MenuItem("Reset view", "Ctrl+Z"))
+			{
+				// Обработка действия отмены
+			}
+			if (ImGui::MenuItem("100%", "Ctrl+Y"))
+			{
+				// Обработка действия повтора
+			}
+			ImGui::EndMenu();
+		}
+
+		// View
+		if (ImGui::BeginMenu("View")) {
+			if (ImGui::MenuItem("Reset view", "Ctrl+0")){
+				GiCadWindows.ResetView();				
+			}
+			if (ImGui::MenuItem("100%", "Ctrl+1")){
+				GiCadWindows.ResetView100p();
+			}
+			ImGui::EndMenu();
+		}
+
+		// Program
+		if (ImGui::BeginMenu("Prog")) {
+			if (ImGui::MenuItem("Drill", "")) {
+//				GiCadWindows.ResetView();
+			}
+			ImGui::EndMenu();
+		}
+
+		// About
+		if (ImGui::BeginMenu("About")) {
+			if (ImGui::MenuItem("About GiCad", "Ctrl+?")) {
+				//GiCadWindows.ResetView();
+			}
+			if (ImGui::MenuItem("Source", "Ctrl+Shift+?")) {
+				//GiCadWindows.ResetView100p();
+			}
+			ImGui::EndMenu();
+		}
+
+
+		ImGui::EndMainMenuBar();
+	}
+}
+
+void GuiLayersRender() {
+	GiProject.GuiTreeRender();
+}
+
+void GuiRender() {
+	GuiMenuRender();
+	GuiLayersRender();
 }

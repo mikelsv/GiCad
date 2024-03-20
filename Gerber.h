@@ -1,25 +1,32 @@
 bool GiProjectLayerAddCircle(int layer_id, double x, double y, double dia);
 bool GiProjectLayerAddPath(int layer_id);
 bool GiProjectLayerAddPPoi(int layer_id, double x, double y);
+bool GiProjectLayerSetColor(int layer_id, KiVec4 color);
 bool GiProjectLayerClean(int layer_id);
 
 
-class BaseFile{
+class GiBaseFile{
 private :
 	// File
-	MString path;
-	bool is_open;
+	MString path, file;
+	bool is_open, is_active;
 
 	// State
 	sstat64 state;
 
 	// Layer
 	int layer_id;
+	KiVec4 color;
 
 public:
 	bool Open(VString name){		
 		MString data = LoadFile(name);
 		path = name;
+
+		// Get file name
+		ILink link;
+		link.Link(path, 1);
+		file = link.file;
 
 		state = GetFileInfo(path);
 
@@ -32,7 +39,7 @@ public:
 
 		GiProjectLayerClean(layer_id);
 
-		return is_open = Read(data);
+		return is_open = is_active = Read(data);
 	}
 
 	virtual bool Read(VString data){ 
@@ -48,8 +55,32 @@ public:
 	}
 
 	// Get / Set
+	int GetLayerId() {
+		return layer_id;
+	}
+
 	VString GetPath(){
 		return path;
+	}
+
+	VString GetFile() {
+		return file;
+	}
+
+	bool GetActive() {
+		return is_active;
+	}
+
+	KiVec4 GetColor() {
+		return color;
+	}
+
+	void SetColor(const KiVec4 &c) {
+		color = c;
+	}
+
+	void SetActive(bool active) {
+		is_active = active;
 	}
 
 	void SetLayerId(int id){
@@ -106,7 +137,7 @@ public:
 
 };
 
-class GrblFile : public BaseFile{
+class GrblFile : public GiBaseFile {
 private:
 	// Data
 	GrblFileMetric metric;
@@ -382,9 +413,6 @@ public:
 
 
 	void Clean(){
-		path.Clean();
-		is_open = 0;
-
 		metric = GrblFileMetricUnk;
 		polarity = GrblFilePolarityUnk;
 		fsla_x = fsla_y = 0;
@@ -430,7 +458,7 @@ public:
 };
 
 
-class DrillFile : public BaseFile{
+class DrillFile : public GiBaseFile {
 	// State
 	DrillFileState state;
 	GrblFileMetric metric;
@@ -553,7 +581,7 @@ private:
 	void Clean(){		
 		aps.Clean();
 
-		BaseFile::Clean();
+		GiBaseFile::Clean();
 	}
 
 };
