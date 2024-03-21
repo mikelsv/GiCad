@@ -43,7 +43,6 @@ public:
 	GlslMain glsl_main;
 	MglMenu glsl_menu;
 	MglPopUp glsl_popup;
-	MglGui glsl_gui;
 	GlslObjects glsl_objects;
 
 	// Timer
@@ -73,14 +72,12 @@ public:
 		window = wnd;
 
 		glsl_main.Init(screen);
-		glsl_gui.Init();
 		glsl_menu.Init();
 		glsl_popup.Init();
 		glsl_objects.Init();
 
 		GlslFontTexture.Init();
 		glsl_main.SetFont(GlslFontTexture.GetTexture());
-		glsl_gui.SetFont(GlslFontTexture.GetTexture());
 		glsl_menu.SetFont(GlslFontTexture.GetTexture());
 		glsl_popup.SetFont(GlslFontTexture.GetTexture());
 
@@ -120,7 +117,6 @@ public:
 		maximized = m;
 
 		glsl_main.UpdateRes(screen);
-		glsl_gui.UpdateRes(screen);
 		glsl_menu.UpdateRes(screen);
 		glsl_popup.UpdateRes(screen);		
 		glsl_objects.UpdateRes(screen);
@@ -145,19 +141,6 @@ public:
 	}
 
 	// Gui
-	void GuiAddHeaderMenu(){
-		glsl_gui.InsertMenu(GIGUI_HMENU_FILE, "File");
-		glsl_gui.InsertMenu(GIGUI_HMENU_VIEW, "View");
-		glsl_gui.InsertMenu(GIGUI_HMENU_HELP, "Help");
-	}
-
-	void GuiAddTreeList(){
-		//glsl_gui.InsertTree(GIGUI_TREE_MAIN, "0, 10, 100, -20");
-	//	glsl_gui.AddTreeItem(GIGUI_TREE_LAYERS);
-//		glsl_gui.SetTreeSubItem(
-
-
-	}
 
 	void CallGui(int id){
 		// Menu
@@ -215,6 +198,37 @@ public:
 
 		SetZoom(scale);
 		SetMove(KiVec2(rect.x * scale - (screen.x - width * scale) / 2, rect.y * scale - (screen.y - height * scale) / 2));
+	}
+
+	void UpdateZeroPoint(GiCadZeroPoint type) {
+		KiVec4 rect = GiProject.GetLayersRect();
+		KiVec2 zero;
+
+		switch (type) {
+		default:
+		case GiCadZeroPointNull:
+			zero = KiVec2(0, 0);
+			break;
+
+		case GiCadZeroPointLeftUp:
+			zero = KiVec2(rect.x, rect.w);
+			break;
+
+		case GiCadZeroPointLeftDown:
+			zero = KiVec2(rect.x, rect.y);
+			break;
+
+		case GiCadZeroPointRightUp:
+			zero = KiVec2(rect.z, rect.w);
+			break;
+
+		case GiCadZeroPointRightDown:
+			//zero = KiVec2(rect.z, rect.y);
+			break;
+		}
+
+		glsl_main.UpdateZero(zero);
+		GiProject.SetZeroPoint(zero);
 	}
 
 	void ShowMenuFile(){
@@ -283,7 +297,6 @@ public:
 		//GiProject.Render(move, KiVec2(screen.x, screen.y), zoom);
 
 		glsl_main.Render((ttime.dtime() - stime) / 1000);
-		glsl_gui.Render((ttime.dtime() - stime) / 1000);
 
 		//glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 		glsl_objects.Render(0);
@@ -409,9 +422,6 @@ static void GiWndMouseClickCallback(GLFWwindow* window, int button, int action, 
 
 				GiCadWindows.HideMenu();
 			}
-
-			if(!clicked && !action)
-				GiCadWindows.CallGui(GiCadWindows.glsl_gui.OnClick(click));
 
 			GiCadWindows.glsl_popup.OnClick(KiVec2(GiCadWindows.mouse[2].cur.x, GiCadWindows.screen.y - GiCadWindows.mouse[2].cur.y));
 
@@ -553,6 +563,8 @@ void GiWndDrop(GLFWwindow* window, int count, const char** paths){
 		else
 			GiWndDropMessage(paths[i], 0);
 	}
+
+	GiProject.OnDrop();
 }
 
 void GiWndClose(GLFWwindow* window){
@@ -573,10 +585,9 @@ void GiWindowsClose() {
 	GiCadWindows.close_window = 1;
 }
 
-
 void GuiMenuRender() {
 	if (ImGui::BeginMainMenuBar()) {
-		ImGui::SetWindowFontScale(3.0f);
+		ImGui::SetWindowFontScale(GIGUI_GLOBAL_SCALE);
 
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("New Projects", "Ctrl+N"))
@@ -618,10 +629,29 @@ void GuiMenuRender() {
 			ImGui::EndMenu();
 		}
 
+		if (ImGui::BeginMenu("Points")) {
+			if (ImGui::MenuItem("Reset zero point"))
+				GiCadWindows.UpdateZeroPoint(GiCadZeroPointNull);
+
+			if (ImGui::MenuItem("Zero point to Left Up"))
+				GiCadWindows.UpdateZeroPoint(GiCadZeroPointLeftUp);
+
+			if (ImGui::MenuItem("Zero point to Left Down"))
+				GiCadWindows.UpdateZeroPoint(GiCadZeroPointLeftDown);
+
+			if (ImGui::MenuItem("Zero point to Right Up"))
+				GiCadWindows.UpdateZeroPoint(GiCadZeroPointRightUp);
+
+			if (ImGui::MenuItem("Zero point to Right Down"))
+				GiCadWindows.UpdateZeroPoint(GiCadZeroPointRightDown);
+
+			ImGui::EndMenu();
+		}
+
 		// Program
 		if (ImGui::BeginMenu("Prog")) {
 			if (ImGui::MenuItem("Drill", "")) {
-//				GiCadWindows.ResetView();
+				GiProject.SetProg(GiProjectProgDrill);
 			}
 			ImGui::EndMenu();
 		}
@@ -644,9 +674,25 @@ void GuiMenuRender() {
 
 void GuiLayersRender() {
 	GiProject.GuiTreeRender();
+	GiProject.GuiProg();
 }
 
 void GuiRender() {
 	GuiMenuRender();
 	GuiLayersRender();
+
+	// Menu
+	//ImGui::OpenPopup("mypicker");
+	//if (ImGui::BeginPopup("mypicker"))
+	//{
+	//	ImGui::Text("MY CUSTOM COLOR PICKER WITH AN AMAZING PALETTE!");
+	//	ImGui::Separator();
+
+	//	ImGui::EndPopup();
+	//}
+}
+
+
+void GiWindowsResetView100p() {
+	GiCadWindows.ResetView100p();
 }

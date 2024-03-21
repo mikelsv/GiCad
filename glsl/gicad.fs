@@ -2,6 +2,7 @@
 uniform float iTime;
 uniform vec2 iResolution;
 uniform vec2 iMove;
+uniform vec2 iZero;
 uniform float iZoom;
 uniform vec4 iMouse;
 uniform int iFps;
@@ -46,6 +47,21 @@ uniform uint GiPathsCount;
 // Out
 out highp vec4 fragColor;
 
+void drawRing00(inout vec4 fragColor, in vec2 fragCoord, int type){
+    float distance  = length(vec2(0., 0.) - fragCoord);
+    float innerRadius = 7;
+    float outerRadius = 10;
+    vec4 col;
+
+    if (distance > innerRadius && distance < outerRadius){
+        if(type == 0)
+            col = vec4(.8, 1., .8, 1);
+        else
+            col = vec4(1.0, .8, .8, 1);
+
+        fragColor = mix(fragColor, col, .5);
+    }
+}
 
 void drawMouseCursor(inout vec4 fragColor, in vec2 fragCoord){
     float distance  = length(vec2(0., 0.) - fragCoord);
@@ -153,9 +169,14 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord){
     if(fragCoord.x < 0)
         fragColor -= vec4(.50);
 
-
     // Mouse cursor
     drawMouseCursor(fragColor, fragCoord - (iMouse.xy + iMove) / iZoom);
+    
+    // Home Ring
+    drawRing00(fragColor, fragCoord, 0);
+
+    // Zero Ring
+    drawRing00(fragColor, fragCoord - iZero, 1);
 
     // Mouse
     if(InMouseRange(fragColor, fragCoord))
@@ -283,22 +304,11 @@ void toolBar(inout vec4 fragColor, in vec2 fragCoord){
     }
 }
 
-void drawRing00(inout vec4 fragColor, in vec2 fragCoord){
-    float distance  = length(vec2(0., 0.) - fragCoord);
-    float innerRadius = 45;
-    float outerRadius = 50;
 
-    if (distance > innerRadius && distance < outerRadius){
-        fragColor = vec4(1., 1., 1., 1.);
-    }
-}
 
 void main(){
 	// Main
 	mainImage(fragColor, (gl_FragCoord.xy + iMove.xy) / iZoom / xZoom);
-
-    // X0Y0 Ring
-    drawRing00(fragColor, (gl_FragCoord.xy + iMove.xy) / iZoom / xZoom);
 
     // Tools
     toolBar(fragColor, gl_FragCoord.xy);

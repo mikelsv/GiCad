@@ -47,7 +47,7 @@ public:
 class GlslMain : public MglSimpleGlsl{
 	GLuint vbo, vao, vertex_id, color_id;
 
-	GLint uni_iTime, uni_iRes, uni_iMove, uni_iZoom, uni_iMouse, uni_iFps, unu_iChan0, uni_GiCircles, uni_GiCirclesCount;
+	GLint uni_iTime, uni_iRes, uni_iMove, uni_iZoom, uni_iZero, uni_iMouse, uni_iFps, unu_iChan0, uni_GiCircles, uni_GiCirclesCount;
 	GLuint font_id;
 
 public:
@@ -62,6 +62,7 @@ public:
 		uni_iRes = GetUniformLocation("iResolution");
 		uni_iMove = GetUniformLocation("iMove");
 		uni_iZoom = GetUniformLocation("iZoom");
+		uni_iZero = GetUniformLocation("iZero");
 		uni_iMouse = GetUniformLocation("iMouse");
 		uni_iFps = GetUniformLocation("iFps");
 
@@ -150,6 +151,12 @@ public:
 	void UpdateZoom(float zoom){
 		UseProgram();
 		glUniform1f(uni_iZoom, zoom);
+		glUseProgram(0);
+	}
+
+	void UpdateZero(KiVec2 zero){
+		UseProgram();
+		glUniform2f(uni_iZero, zero.x, zero.y);
 		glUseProgram(0);
 	}
 

@@ -14,6 +14,7 @@
 
 Versions PROJECTVER[] = {
     // new version to up
+	"0.0.0.8", "21.03.2024 11:22",
 	"0.0.0.7", "20.03.2024 11:57",
 	"0.0.0.6", "09.03.2024 16:07",
 	"0.0.0.5", "07.03.2024 09:05",
@@ -41,6 +42,9 @@ VString _msv_zero_str(&_msv_zero_code, 1);
 
 // OpenGL
 #include "../msvcore2/opengl/mgl.h"
+
+// Base
+#include "Base.h"
 
 // Gerber
 #include "Gerber.h"
@@ -122,15 +126,13 @@ int main(int args, char* arg[], char* env[]){
 
 	// Design
 	GiCadWindows.InsertPopUp(LString() + "Wellcome to GiCad " + PROJECTVER[0].ver + " !");
-	GiCadWindows.GuiAddHeaderMenu();
-	GiCadWindows.GuiAddTreeList();
 	
 	// Extender options
 	srand(time());
 
 	// Callbacks
 	glfwSetWindowSizeCallback(window, GiWndResize);
-	glfwSetKeyCallback(window, GiWndKeyCallback);
+	//glfwSetKeyCallback(window, GiWndKeyCallback);
 	glfwSetMouseButtonCallback(window, GiWndMouseClickCallback);
 	glfwSetCursorPosCallback(window, GiWndMouseMotionCallback);
 	glfwSetScrollCallback(window, GiWndMouseScrollCallback);

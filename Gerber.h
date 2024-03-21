@@ -1,9 +1,22 @@
+enum GiLayerAppType {
+	GiLayerAppTypeUnk,
+	GiLayerAppTypeCircle
+};
+
+
+bool GiProjectLayerAddAppCircle(int layer_id, int id, float dia);
 bool GiProjectLayerAddCircle(int layer_id, double x, double y, double dia);
 bool GiProjectLayerAddPath(int layer_id);
 bool GiProjectLayerAddPPoi(int layer_id, double x, double y);
 bool GiProjectLayerSetColor(int layer_id, KiVec4 color);
 bool GiProjectLayerClean(int layer_id);
 
+
+
+//template<int size>
+//auto gui_check_f(const char(&input)[size]) {
+//	return ImGuiChar{ input };
+//}
 
 class GiBaseFile{
 private :
@@ -18,7 +31,15 @@ private :
 	int layer_id;
 	KiVec4 color;
 
+	// ImGui
+	ImGuiCharId<11> gui_check;
+	ImGuiCharId<8> gui_color;
+
+	//inline static ImGuiChar gui_check2 = gui_check_f("##Checkbox");
+
 public:
+	GiBaseFile() : gui_check("##Checkbox"), gui_color("##Color") {}
+
 	bool Open(VString name){		
 		MString data = LoadFile(name);
 		path = name;
@@ -87,6 +108,21 @@ public:
 		layer_id = id;
 	}
 
+	// Gui
+	void UpdateGui() {
+		gui_check.SetId(layer_id);
+		gui_color.SetId(layer_id);
+	}
+
+	char* GuiNameCheck() {
+		return gui_check;
+	}
+
+	char* GuiNameColor() {
+		return gui_check;
+	}
+
+	// Error
 	bool Error(VString err){
 		print(err, "\r\n");
 		return 0;
@@ -137,6 +173,97 @@ public:
 
 };
 
+template<int size>
+struct ImGuiChar {
+	char str[size];
+
+public:
+	constexpr ImGuiChar(const char(&data)[size]) {
+		memcpy(str, data, size);
+		str[size - 1] = '\0';
+	}
+
+	operator char* () {
+		return str;
+	}
+};
+
+template <int size>
+ImGuiChar(const char(&data)[size]) -> ImGuiChar<size>;
+
+
+/*
+using namespace std;
+#include <iostream>
+#include <array>
+#include <string>
+#include <string_view>
+#include <ranges>
+
+
+template <std::size_t Size>
+struct ConstexprString {
+	std::array<char, Size> data;
+	inline constexpr auto begin() -> char* {
+		return this->data.begin();
+	};
+	inline constexpr auto begin() const -> const char* {
+		return this->data.begin();
+	};
+	inline constexpr auto end() -> char* {
+		return this->data.end();
+	};
+	inline constexpr auto end() const -> const char* {
+		return this->data.end();
+	};
+	static constexpr auto kSize = Size == 0 ? 0 : Size - 1;
+	inline constexpr ConstexprString() = default;
+	inline constexpr ConstexprString(const char(&data)[Size]) : data{} {
+		std::ranges::copy_n(data, Size, this->data.begin());
+	};
+	inline constexpr ConstexprString(std::string data) : data{} {
+		std::ranges::copy_n(data.begin(), Size, this->data.begin());
+	};
+	inline constexpr ConstexprString(std::array<char, Size> data) : data(std::move(data)) {};
+	inline constexpr auto size() const {
+		return Size == 0 ? 0 : Size - 1;
+	};
+	//inline constexpr operator std::string_view() const& {
+	//	return { this->begin() };
+	//};
+//	inline constexpr bool operator==(std::string_view other) const {
+//		return static_cast<std::string_view>(*this) == other;
+//	};
+	template <std::size_t SSize>
+	inline constexpr auto operator+(const ConstexprString<SSize>& other) -> ConstexprString<Size + SSize - 1> {
+		ConstexprString<Size + SSize - 1> response;
+		std::ranges::copy_n(this->begin(), Size - 1, response.begin());
+		std::ranges::copy_n(other.begin(), SSize, response.begin() + Size - 1);
+		return response;
+	};
+	inline constexpr ConstexprString(const ConstexprString&) = default;
+	inline constexpr ConstexprString(ConstexprString&&) = default;
+};
+
+
+template <std::size_t Count>
+inline constexpr auto CreateStringWith(char c) {
+	ConstexprString<Count + 1> str = {};
+	for (std::size_t i = 0; i < Count; i++) {
+		str.data[i] = c;
+	};
+	str.data[Count] = '\0';
+	return str;
+};
+
+
+template <std::size_t Size>
+ConstexprString(const char(&data)[Size]) -> ConstexprString<Size>;
+*/
+
+
+
+
 class GrblFile : public GiBaseFile {
 private:
 	// Data
@@ -150,6 +277,10 @@ private:
 
 	// Apertures
 	OList<GrblFileAperture> aps;
+
+	// ImGui
+	//ImGuiCharId<11> gui_check;
+	//ImGuiCharId<11> gui_check;
 
 public:
 
@@ -470,7 +601,9 @@ class DrillFile : public GiBaseFile {
 	int cmd_t;
 	double cmd_t_dia;
 
-private:
+public:
+	DrillFile() {}
+
 	bool Read(VString data){
 		state = DrillFileHead;
 
@@ -522,7 +655,9 @@ private:
 					int resi = PartLines(line, "T$dC$f", res);
 					if(resi != 2)
 						return Error(LString() + "Bad code: " + line);
+
 					SetAperture(res[0].toi(), res[1].tod());
+					GiProjectLayerAddAppCircle(layer_id, res[0].toi(), res[1].tod());
 
 					return 1;
 				} else if(key == "T" && state == DrillFileData){

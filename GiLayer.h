@@ -20,6 +20,36 @@ public:
 	}
 };
 
+// AppType
+// Circle: pos(d.x, d.y), dia(d.z);
+// Rectabgle: pos1(d.x, d.y), pos2(d.z, d.w)
+
+class GiLayerAppEl {
+public:
+	GiLayerAppType type;
+	int id;
+	float dia;	
+
+	KiVec4 d;
+
+	bool checked;
+
+	// Gui
+	ImGuiCharId<2> c_type; // T01
+	ImGuiCharId<11> c_check; // ##Checkbox
+
+public:
+	GiLayerAppEl() : c_type("T"), c_check("##Checkbox") {
+		checked = 1;
+	}
+
+	void OnUpdate() {
+		c_type.SetId2(id);
+		c_check.SetId(id);
+	}
+
+};
+
 class GiLayer{
 	// Head
 	int layer_id;
@@ -27,6 +57,7 @@ class GiLayer{
 	KiVec4 color;
 
 	// Data
+	OList<GiLayerAppEl> apps;
 	OList<GiLayerCircle> cls;
 	OList<GiLayerPath> paths;
 
@@ -69,6 +100,15 @@ public:
 	}
 
 	// Add
+	void AddAppCircle(int id, float dia) {
+		auto el = apps.NewE();
+		el->type = GiLayerAppTypeCircle;
+		el->id = id;
+		el->dia = dia;
+
+		el->OnUpdate();
+	}
+
 	void AddCircle(double x, double y, double dia){
 		GiLayerCircle *el = cls.NewE();
 		el->x = x;
@@ -106,6 +146,31 @@ public:
 		}
 
 		return size;
+	}
+
+	// App
+	bool AppGetCheckAll() {
+		if (!this)
+			return 0;
+
+		GiLayerAppEl* el = 0;
+		bool check = 0;
+
+		while (el = apps.Next(el)) {
+			check |= el->checked;
+		}
+
+		return check;
+	}
+
+	void AppSetCheckAll(bool state) {
+		if (!this)
+			return;
+
+		GiLayerAppEl *el = 0;
+		while (el = apps.Next(el)) {
+			el->checked = state;
+		}
 	}
 
 	KiVec4 GetLayerRect(){
@@ -146,11 +211,17 @@ public:
 		return rect;
 	}
 
+	auto NextApp(auto el) {
+		return apps.Next(el);
+	}
+
 	// ~
 	void Clean(){
 		last_path = 0;
 
+		apps.Clean();
 		cls.Clean();
+		paths.Clean();
 	}
 
 	friend class GiProject;

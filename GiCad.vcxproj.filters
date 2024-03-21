@@ -73,6 +73,9 @@
     <ClInclude Include="GiWindows.h">
       <Filter>Header files</Filter>
     </ClInclude>
+    <ClInclude Include="Base.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
@@ -98,12 +101,6 @@
       <Filter>Resources</Filter>
     </None>
     <None Include="glsl\popup.vs">
-      <Filter>Resources</Filter>
-    </None>
-    <None Include="glsl\gui.fs">
-      <Filter>Resources</Filter>
-    </None>
-    <None Include="glsl\gui.vs">
       <Filter>Resources</Filter>
     </None>
   </ItemGroup>
