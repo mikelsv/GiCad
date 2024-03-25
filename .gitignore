@@ -250,4 +250,9 @@ paket-files/
 # JetBrains Rider
 .idea/
 *.sln.iml
+
+# GiCad files
 elog_create_shader.txt
+GiCad.cfg
+imgui.ini
+tools/user/

@@ -14,6 +14,7 @@
 
 Versions PROJECTVER[] = {
     // new version to up
+	"0.0.0.9", "25.03.2024 14:58",
 	"0.0.0.8", "21.03.2024 11:22",
 	"0.0.0.7", "20.03.2024 11:57",
 	"0.0.0.6", "09.03.2024 16:07",
@@ -54,6 +55,7 @@ VString _msv_zero_str(&_msv_zero_code, 1);
 #include "Gui.h"
 //#include "Graphics.h"
 #include "GiLayer.h"
+#include "GiPath.h"
 #include "GiProject.h"
 #include "GiWindows.h"
 
@@ -116,11 +118,14 @@ int main(int args, char* arg[], char* env[]){
 	GiWindowsUpdateTitle();
 	GiWndResize(window, (GLsizei)GiCadWindows.screen.x, (GLsizei)GiCadWindows.screen.y);
 
+	// Init Tools
+	GiTools.Init();
+
 	// Initialize ImGUI
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& imgui = ImGui::GetIO(); (void)imgui;
-	ImGui::StyleColorsDark();
+	ImGui::StyleColorsClassic();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 460");
 

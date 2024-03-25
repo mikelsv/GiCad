@@ -65,7 +65,7 @@ public:
 		close_window = 0;
 
 		// Load config
-		LoadCongig();
+		LoadConfig();
 	}
 
 	void Init(GLFWwindow *wnd){
@@ -305,7 +305,7 @@ public:
 		//glBindFramebuffer(GL_FRAMEBUFFER, 0);		
 	}
 
-	void LoadCongig(){
+	void LoadConfig(){
 		MString data = LoadFile("GiCad.cfg");
 		XDataCont json(data);
 
@@ -581,6 +581,10 @@ void GiWindowsLayerInsertItem(int id, int active, MRGB color, VString Text){
 	//GiCadWindows.glsl_gui.InsertList
 }
 
+void GiWindowsInsertPopUp(VString text) {
+	GiCadWindows.InsertPopUp(text);
+}
+
 void GiWindowsClose() {
 	GiCadWindows.close_window = 1;
 }
@@ -604,6 +608,7 @@ void GuiMenuRender() {
 
 			ImGui::EndMenu();
 		}
+		ImGui::Separator();
 		
 		// Edit
 		if (ImGui::BeginMenu("Edit")){
@@ -617,6 +622,7 @@ void GuiMenuRender() {
 			}
 			ImGui::EndMenu();
 		}
+		ImGui::Separator();
 
 		// View
 		if (ImGui::BeginMenu("View")) {
@@ -628,6 +634,7 @@ void GuiMenuRender() {
 			}
 			ImGui::EndMenu();
 		}
+		ImGui::Separator();
 
 		if (ImGui::BeginMenu("Points")) {
 			if (ImGui::MenuItem("Reset zero point"))
@@ -647,14 +654,25 @@ void GuiMenuRender() {
 
 			ImGui::EndMenu();
 		}
+		ImGui::Separator();
 
-		// Program
-		if (ImGui::BeginMenu("Prog")) {
+		// Tools
+		if (ImGui::BeginMenu("Tools")) {
+			if (ImGui::MenuItem("Tools base", "")) {
+				GiTools.ShowTools(1);
+			}
+			ImGui::EndMenu();
+		}
+		ImGui::Separator();
+
+		// Path
+		if (ImGui::BeginMenu("Path")) {
 			if (ImGui::MenuItem("Drill", "")) {
 				GiProject.SetProg(GiProjectProgDrill);
 			}
 			ImGui::EndMenu();
 		}
+		ImGui::Separator();
 
 		// About
 		if (ImGui::BeginMenu("About")) {
@@ -675,6 +693,7 @@ void GuiMenuRender() {
 void GuiLayersRender() {
 	GiProject.GuiTreeRender();
 	GiProject.GuiProg();
+	GiTools.Render();
 }
 
 void GuiRender() {

@@ -76,6 +76,9 @@
     <ClInclude Include="Base.h">
       <Filter>Header files</Filter>
     </ClInclude>
+    <ClInclude Include="GiPath.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />

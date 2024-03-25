@@ -98,6 +98,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Base.h" />
+    <ClInclude Include="GiPath.h" />
     <ClInclude Include="GiWindows.h" />
     <ClInclude Include="GiLayer.h" />
     <ClInclude Include="GiProject.h" />
