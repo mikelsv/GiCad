@@ -1,6 +1,7 @@
 enum GiPathType {
 	GiPathTypeUnknown,
-	GiPathTypeMove
+	GiPathTypeMove,
+	GiPathTypeDrill
 };
 
 // Path types:
@@ -9,13 +10,17 @@ enum GiPathType {
 class GiPathEl {
 public:
 	GiPathType type;
-	float x, y;
+	float x, y, d;
 };
 
 class GiPath {
 	// Main
 	MString name;
 	OList<GiPathEl> paths;
+
+	// Tool
+	GiToolsEl tool;
+	float depth;
 
 	// ImGui
 	ImGuiCharId<11> gui_check;
@@ -45,6 +50,14 @@ public:
 		el->type = GiPathTypeMove;
 		el->x = pos.x;
 		el->y = pos.y;
+	}
+
+	void AddDrill(KiVec2 pos, float depth) {
+		auto el = paths.NewE();
+		el->type = GiPathTypeDrill;
+		el->x = pos.x;
+		el->y = pos.y;
+		el->d = depth;
 	}
 
 	// Get
@@ -77,22 +90,42 @@ public:
 		name = n;
 	}
 
+	void SetTool(GiToolsEl &t, float d) {
+		tool = t;
+		depth = d;
+	}
+
 	// Data
 	MString GetSaveData(KiVec2 zero) {
 		GiPathEl* el = 0;
 		LString ls;
 
+		// Safe
+		if (tool.depth < 0.1)
+			tool.depth = 0.1;
+
 		// Head
 		ls + "; Gicad " + PROJECTVER->ver + "\r\n";
 		ls + "G21 G17 G90" + "\r\n";
-		ls + "M3 1000" + "\r\n";
-
+		ls + "M3 " + tool.speed + "\r\n";
 
 		while (el = paths.Next(el)) {
-			ls + "G0Z10" + "\r\n";
-			ls + "X" + (el->x - zero.x) + "Y" + (el->y - zero.y) + "\r\n";
-			ls + "Z2" + "\r\n";
-			ls + "G1Z-1F60" + "\r\n";
+			if (el->type == GiPathTypeMove) {
+				ls + "G0Z10" + "\r\n";
+				ls + "X" + (el->x - zero.x) + "Y" + (el->y - zero.y) + "\r\n";
+			}
+
+			if (el->type == GiPathTypeDrill) {
+				float depth = 0;
+				while (depth < el->d) {
+					float d = min(el->d, depth + tool.depth);
+					
+					ls + "G1Z" + (float(depth - 2) * -1) + "F60" + "\r\n";
+					ls + "G1Z" + (d * -1) + "F60" + "\r\n";
+
+					depth = d;
+				}				
+			}
 		}
 
 		ls + "M5" + "\r\n";

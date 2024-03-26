@@ -1,4 +1,4 @@
-#define GIGUI_GLOBAL_SCALE 2.8
+#define GIGUI_GLOBAL_SCALE 2.7
 
 enum GiCadZeroPoint {
 	GiCadZeroPointNull,
@@ -47,23 +47,15 @@ class ImGuiCharIdExt {
 	char data[maxsize + 1]; // +1 for safe
 	int size;
 
+
 public:
 	// Init
-	ImGuiCharIdExt() {
-		size = 0;
-		data[0] = 0;
+	ImGuiCharIdExt() {		
+		Clean();
 	}
 
-	ImGuiCharIdExt(const char* input) {
-		if (!input) {
-			size = 0;
-			return;
-		}
-
-		size = strlen(input);
-
-		memcpy(data, input, size);
-		data[size] = '\0';
+	ImGuiCharIdExt(const char* str) {
+		SetStr(str);
 	}
 
 	// Get 
@@ -75,25 +67,59 @@ public:
 		return maxsize;
 	}
 
-	// Set Int
-	void SetInt(int val, int len = 0) {
-		if (len == 0)
-			return SetIntL0(val);
+	// Int
+
+
+	void SetInt(int val) {
+		Clean();
+		AddInt(val);
 	}
 
-	void SetIntL0(int val) { // val > 0
-		int sz = GetIntLen(val);
-		int pow = Pow10(sz - 1);
+	void AddInt(int val) {
+		int len = GetIntLen(abs(val));
+		int pow = Pow10(len - 1);
+		int pos = size;
 		int count = 0;
-
-		while (count < sz && size + count < maxsize && pow != 0) {
-			data[size + count] = 48 + (val / pow) % 10;
-			pow /= 10;
-			count++;
+		
+		// -
+		if (val < 0 && pos < maxsize) {
+			val *= -1;
+			data[pos] = '-';
+			pos++;
 		}
 
-		data[size + count] = 0;
+		// Zero
+		if (val == 0 && pos < maxsize) {
+			data[pos] = '0';
+			pos++;
+		}
+
+		// Int
+		while (count < len && pos < maxsize && pow != 0) {
+			data[pos] = 48 + (val / pow) % 10;
+			pow /= 10;
+			count++;
+			pos++;
+		}
+
+		// Close
+		size = pos;
+		data[size] = 0;
 	}
+
+	//void SetIntL0(int val) { // val > 0
+	//	int sz = GetIntLen(val);
+	//	int pow = Pow10(sz - 1);
+	//	int count = 0;
+
+	//	while (count < sz && size + count < maxsize && pow != 0) {
+	//		data[size + count] = 48 + (val / pow) % 10;
+	//		pow /= 10;
+	//		count++;
+	//	}
+
+	//	data[size + count] = 0;
+	//}
 
 	int GetIntLen(int val) {
 		int count = 0;
@@ -117,12 +143,44 @@ public:
 		return res;
 	}
 
-	// Set Str
+	// Float
+	void SetFloat(float val) {
+		Clean();
+		AddFloat2(val);
+	}
+
+	void AddFloat2(float val) {
+		AddInt(val);
+
+		if (val < 0)
+			val *= -1;
+
+		if (size < maxsize) {
+			data[size] = '.';
+			size++;
+		}
+
+		AddInt(int(val * 10) % 10);
+		AddInt(int(val * 100) % 10);
+	}
+
+	// Str
 	void SetStr(VString str) {
-		int msize = min(maxsize, str.size());
-		memcpy(data, str, msize);
-		size = msize;
-		data[size] = 0;
+		Clean();
+		AddStr(str);
+	}
+
+	void AddStr(VString str) {
+		if (!str)		
+			return;
+	
+		int len = str.size();
+		if (len > maxsize - size)
+			len = maxsize - size;
+
+		memcpy(data + size, str, len);
+		size += len;
+		data[size] = '\0';
 	}
 
 	// Data
@@ -132,6 +190,12 @@ public:
 
 	operator char* () {
 		return data;
+	}
+
+	// Clean
+	void Clean() {
+		size = 0;
+		data[size] = 0;
 	}
 };
 
@@ -145,7 +209,7 @@ public:
 	// Base
 	int id;
 	MString name;
-	float diameter;
+	float diameter, depth;
 	int speed;
 
 	// Gui
@@ -308,6 +372,7 @@ public:
 		tool->id = json["tool.id"].toi();
 		tool->name = json["tool.name"];
 		tool->diameter = json["tool.dia"].tod();
+		tool->depth = json["tool.depth"].tod();
 		tool->speed = json["tool.speed"].toi();
 
 		// Gui
@@ -327,7 +392,8 @@ public:
 		json.Up("tool");
 		json("id", itos(tool->id));
 		json("name", tool->name);
-		json("dia", itos(tool->diameter));
+		json("dia", dtos(tool->diameter));
+		json("depth", dtos(tool->depth));
 		json("speed", itos(tool->speed));
 
 		json.Save(tool->GetToolFile());
@@ -481,6 +547,11 @@ public:
 		ImGui::Text("Diameter: ");
 		ImGui::SameLine();
 		if (ImGui::InputFloat("##Diameter", &tool->diameter)) {}
+
+		// Depth
+		ImGui::Text("Depth: ");
+		ImGui::SameLine();
+		if (ImGui::InputFloat("##Depth", &tool->depth)) {}
 
 		// Speed
 		ImGui::Text("Spindle Speed: ");

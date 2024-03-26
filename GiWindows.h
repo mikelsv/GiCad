@@ -5,12 +5,12 @@
 #define GICAD_ZOOM_MIN	.05
 
 
-class GiCadWindowsMouse{
+class GiWndMouse {
 public:
 	KiVec2 cur, hold;
 	bool down;
 
-	GiCadWindowsMouse(){
+	GiWndMouse(){
 		cur = hold = KiInt2();
 		down = 0;
 	}
@@ -26,6 +26,51 @@ public:
 
 };
 
+class GiWndToolBar {
+	// Mouse pos: home, zero
+	KiVec2 hpos, zpos;
+
+	// Zoom
+	float zoom;
+
+	// Fps
+	float fps;
+
+public:
+	ImGuiCharIdExt<31> c_home, c_zero, c_zoom, c_fps;
+
+	void UpdateMouse(KiVec2 pos, KiVec2 move, KiVec2 zero, float zoom) {
+		KiVec2 p = (pos + move) / zoom;
+
+		// Home
+		c_home.Clean();
+		c_home.AddStr("Home: ");
+		c_home.AddStr("X ");
+		c_home.AddFloat2(p.x);
+		c_home.AddStr(", Y ");
+		c_home.AddFloat2(p.y);
+
+		// Zero
+		p = (pos + move) / zoom;
+
+		c_zero.Clean();
+		c_zero.AddStr("Zero: ");
+		c_zero.AddStr("X ");
+		c_zero.AddFloat2(p.x);
+		c_zero.AddStr(", Y ");
+		c_zero.AddFloat2(p.y);
+
+		c_zoom.SetStr("Zoom: ");
+		c_zoom.AddFloat2(zoom);
+	}
+
+	void UpdateFps(int fps){
+		c_fps.SetStr("Fps: ");
+		c_fps.AddInt(fps);
+	}
+
+} GiWndToolBar;
+
 class GiCadWindows{
 public:
 	// Screen
@@ -35,13 +80,13 @@ public:
 	GLFWwindow* window;
 	
 	// Mouse
-	GiCadWindowsMouse mouse[3];
+	GiWndMouse mouse[3];
 	//KiInt2 mouse_cur, mouse_hold;
 	//bool mouse_down[3];
 
 	// GLSL
 	GlslMain glsl_main;
-	MglMenu glsl_menu;
+	//MglMenu glsl_menu;
 	MglPopUp glsl_popup;
 	GlslObjects glsl_objects;
 
@@ -72,13 +117,11 @@ public:
 		window = wnd;
 
 		glsl_main.Init(screen);
-		glsl_menu.Init();
 		glsl_popup.Init();
 		glsl_objects.Init();
 
 		GlslFontTexture.Init();
 		glsl_main.SetFont(GlslFontTexture.GetTexture());
-		glsl_menu.SetFont(GlslFontTexture.GetTexture());
 		glsl_popup.SetFont(GlslFontTexture.GetTexture());
 
 		glsl_main.UpdateZoom(zoom);
@@ -108,6 +151,7 @@ public:
 			fps_count = 0;
 
 			glsl_main.UpdateFps(fps);
+			GiWndToolBar.UpdateFps(fps);
 		}
 	}
 
@@ -117,7 +161,6 @@ public:
 		maximized = m;
 
 		glsl_main.UpdateRes(screen);
-		glsl_menu.UpdateRes(screen);
 		glsl_popup.UpdateRes(screen);		
 		glsl_objects.UpdateRes(screen);
 	}
@@ -141,16 +184,7 @@ public:
 	}
 
 	// Gui
-
 	void CallGui(int id){
-		// Menu
-		if(id == GIGUI_HMENU_FILE)
-			ShowMenuFile();
-		if(id == GIGUI_HMENU_VIEW)
-			ShowMenuView();
-		if(id == GIGUI_HMENU_HELP)
-			ShowMenuHelp();
-
 		// File
 		if(id == GIGUI_MENU_PROJECT_NEW)
 			GiProject.NewProject();
@@ -231,56 +265,6 @@ public:
 		GiProject.SetZeroPoint(zero);
 	}
 
-	void ShowMenuFile(){
-		glsl_menu.CleanMenu();
-		
-		glsl_menu.InsertItem(GIGUI_MENU_PROJECT_NEW, "New project");
-		glsl_menu.InsertItem(GIGUI_MENU_PROJECT_OPEN, "Open project");
-		glsl_menu.InsertItem(GIGUI_MENU_PROJECT_SAVE, "Save project");
-		glsl_menu.InsertItem(GIGUI_MENU_PROJECT_SAVEAS, "Save project as");
-		glsl_menu.InsertItem(GIGUI_MENU_PROJECT_EXIT, "Exit");
-
-		glsl_menu.UpdateMouseMenu(KiVec2(mouse[2].cur.x, screen.y - mouse[2].cur.y));
-		glsl_menu.DrawMenu();
-	}
-
-	void ShowMenuView(){
-		glsl_menu.CleanMenu();
-		
-		glsl_menu.InsertItem(GIGUI_HMENU_VIEW_RESET, "Reset view");
-		glsl_menu.InsertItem(GIGUI_HMENU_VIEW_100P, "100%");
-
-		glsl_menu.UpdateMouseMenu(KiVec2(mouse[2].cur.x, screen.y - mouse[2].cur.y));
-		glsl_menu.DrawMenu();
-	}
-
-	void ShowMenuHelp(){
-		glsl_menu.CleanMenu();
-		
-		glsl_menu.InsertItem(GIGUI_HMENU_HELP_ABOUT, "About GiCad");
-		glsl_menu.InsertItem(GIGUI_HMENU_HELP_SOURCE, "Source");
-
-		glsl_menu.UpdateMouseMenu(KiVec2(mouse[2].cur.x, screen.y - mouse[2].cur.y));
-		glsl_menu.DrawMenu();
-	}
-
-	// Menu
-	void ShowMenu(){
-		glsl_menu.UpdateMouseMenu(KiVec2(mouse[2].cur.x, screen.y - mouse[2].cur.y));
-
-		glsl_menu.InsertItem(0, "Hello World!");
-		glsl_menu.InsertItem(1, "1234567890");
-		glsl_menu.InsertItem(2, "");
-		glsl_menu.InsertItem(1, "London is the...");
-
-		glsl_menu.DrawMenu();
-	}
-
-	void HideMenu(){
-		glsl_menu.CleanMenu();
-		glsl_menu.DrawMenu();
-	}
-
 	// Popup
 	void InsertPopUp(VString text, int lifetime = 30){
 		glsl_popup.Insert(text, lifetime);
@@ -301,7 +285,6 @@ public:
 		//glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 		glsl_objects.Render(0);
 		glsl_popup.Render((ttime.dtime() - stime) / 1000);
-		glsl_menu.Render(0);
 		//glBindFramebuffer(GL_FRAMEBUFFER, 0);		
 	}
 
@@ -417,23 +400,11 @@ static void GiWndMouseClickCallback(GLFWwindow* window, int button, int action, 
 			//GiCadWindows.mouse_down[1] = action;
 			//GiCadWindows.glsl.UpdateMouseSelect(GiCadWindows.mouse[0].cur, );
 
-			if(GiCadWindows.glsl_menu.IsActive() && !action){
-				GiCadWindows.CallGui(clicked = GiCadWindows.glsl_menu.OnClick(click));
-
-				GiCadWindows.HideMenu();
-			}
-
 			GiCadWindows.glsl_popup.OnClick(KiVec2(GiCadWindows.mouse[2].cur.x, GiCadWindows.screen.y - GiCadWindows.mouse[2].cur.y));
 
 		break;
 
 		case GLFW_MOUSE_BUTTON_2:
-			if(action == 0 && GiCadWindows.mouse[GLFW_MOUSE_BUTTON_2].down)
-				GiCadWindows.ShowMenu();
-
-			if(action == 1)
-				GiCadWindows.HideMenu();
-
 			GiCadWindows.mouse[GLFW_MOUSE_BUTTON_2].Click(action);
 		break;
 
@@ -483,9 +454,6 @@ static void GiWndMouseMotionCallback(GLFWwindow* window, double x, double y){
 	GiCadWindows.mouse[2].cur = KiInt2(x, y);
 	GiCadWindows.mouse[2].hold = KiInt2(x, y);
 
-	if(GiCadWindows.glsl_menu.IsActive())
-		GiCadWindows.glsl_menu.UpdateMouse(KiInt2(x, GiCadWindows.screen.y - y));
-
 	//print("Mouse ", itos(GiCadWindows.mouse[2].cur.x), "\r\n");
 
 	//GiCadWindows.mouse_move = KiInt2(x, y);
@@ -494,6 +462,8 @@ static void GiWndMouseMotionCallback(GLFWwindow* window, double x, double y){
 	//	mousex += x;
 	//	mousey += y;
 	//}
+
+	GiWndToolBar.UpdateMouse(GiCadWindows.mouse[0].cur, GiCadWindows.move, GiProject.GetZeroPoint(), GiCadWindows.zoom);
 }
 
 void GiWndMouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset){
@@ -529,6 +499,8 @@ void GiWndMouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset
 	//GiCadWindows.zoom = zoom;
 
 	GiCadWindows.SetZoom(zoom);
+
+	GiWndToolBar.UpdateMouse(GiCadWindows.mouse[0].cur, GiCadWindows.move, GiProject.GetZeroPoint(), GiCadWindows.zoom);
 
 
 	//glfwSetCursorPos(window, GiCadWindows.size.x / 2, GiCadWindows.size.y / 2);
@@ -694,21 +666,28 @@ void GuiLayersRender() {
 	GiProject.GuiTreeRender();
 	GiProject.GuiProg();
 	GiTools.Render();
+
+	// Status Bar
+	ImGui::SetNextWindowPos(ImVec2(0, GiCadWindows.screen.y - 50));
+	ImGui::SetNextWindowSize(ImVec2(GiCadWindows.screen.x, 50));
+
+	ImGui::Begin("StatusBar", nullptr, ImGuiWindowFlags_NoTitleBar);
+	ImGui::SetWindowFontScale(GIGUI_GLOBAL_SCALE);
+
+	ImGui::Text(GiWndToolBar.c_home);
+	ImGui::SameLine();
+	ImGui::Text(GiWndToolBar.c_zero);
+	ImGui::SameLine();
+	ImGui::Text(GiWndToolBar.c_zoom);
+	ImGui::SameLine();
+	ImGui::Text(GiWndToolBar.c_fps);
+
+	ImGui::End();
 }
 
 void GuiRender() {
 	GuiMenuRender();
 	GuiLayersRender();
-
-	// Menu
-	//ImGui::OpenPopup("mypicker");
-	//if (ImGui::BeginPopup("mypicker"))
-	//{
-	//	ImGui::Text("MY CUSTOM COLOR PICKER WITH AN AMAZING PALETTE!");
-	//	ImGui::Separator();
-
-	//	ImGui::EndPopup();
-	//}
 }
 
 

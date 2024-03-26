@@ -5,7 +5,7 @@ enum GiLayerAppType {
 
 
 bool GiProjectLayerAddAppCircle(int layer_id, int id, float dia);
-bool GiProjectLayerAddCircle(int layer_id, double x, double y, double dia);
+bool GiProjectLayerAddCircle(int layer_id, int app_id, double x, double y, double dia);
 bool GiProjectLayerAddPath(int layer_id);
 bool GiProjectLayerAddPPoi(int layer_id, double x, double y);
 bool GiProjectLayerSetColor(int layer_id, KiVec4 color);
@@ -67,8 +67,8 @@ public:
 		return 0;
 	}
 
-	bool AddLayerCircle(double x, double y, double dia){
-		return GiProjectLayerAddCircle(layer_id, x, y, dia);
+	bool AddLayerCircle(int app_id, double x, double y, double dia){
+		return GiProjectLayerAddCircle(layer_id, app_id, x, y, dia);
 	}
 
 	bool LayerClean(){
@@ -710,10 +710,10 @@ public:
 	}
 
 	bool SetDrill(int t, double x, double y){
-		return AddLayerCircle(x, y, cmd_t_dia);
+		return AddLayerCircle(t, x, y, cmd_t_dia);
 	}
 
-	void Clean(){		
+	void Clean(){
 		aps.Clean();
 
 		GiBaseFile::Clean();

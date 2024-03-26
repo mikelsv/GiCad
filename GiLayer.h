@@ -1,5 +1,6 @@
 class GiLayerCircle{
 public:
+	int app_id;
 	double x, y, dia;
 };
 
@@ -32,20 +33,23 @@ public:
 
 	KiVec4 d;
 
-	bool checked;
+	bool checked, selected;
 
 	// Gui
 	ImGuiCharId<2> c_type; // T01
 	ImGuiCharId<11> c_check; // ##Checkbox
+	ImGuiCharIdExt<11> c_dia; //
 
 public:
 	GiLayerAppEl() : c_type("T"), c_check("##Checkbox") {
 		checked = 1;
+		selected = 0;
 	}
 
 	void OnUpdate() {
 		c_type.SetId2(id);
 		c_check.SetId(id);
+		c_dia.SetFloat(dia);
 	}
 
 };
@@ -109,8 +113,9 @@ public:
 		el->OnUpdate();
 	}
 
-	void AddCircle(double x, double y, double dia){
+	void AddCircle(int app_id, double x, double y, double dia){
 		GiLayerCircle *el = cls.NewE();
+		el->app_id = app_id;
 		el->x = x;
 		el->y = y;
 		el->dia = dia;
@@ -149,6 +154,28 @@ public:
 	}
 
 	// App
+	bool AppGetEnable(int id) {
+		GiLayerAppEl* el = 0;
+
+		while (el = apps.Next(el)) {
+			if(el->id == id)
+				return el->checked;
+		}
+
+		return 0;
+	}
+
+	bool AppGetSelected(int id) {
+		GiLayerAppEl* el = 0;
+
+		while (el = apps.Next(el)) {
+			if (el->id == id)
+				return el->selected;
+		}
+
+		return 0;
+	}
+
 	bool AppGetCheckAll() {
 		if (!this)
 			return 0;
@@ -170,6 +197,16 @@ public:
 		GiLayerAppEl *el = 0;
 		while (el = apps.Next(el)) {
 			el->checked = state;
+		}
+	}
+
+	void AppSetSelectAll(bool state) {
+		if (!this)
+			return;
+
+		GiLayerAppEl *el = 0;
+		while (el = apps.Next(el)) {
+			el->selected = state;
 		}
 	}
 

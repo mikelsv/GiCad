@@ -19,7 +19,6 @@ enum GiProjectProg {
 	GiProjectProgDrill,
 };
 
-
 class GiProject{
 	// Project
 	MString name, path;
@@ -42,6 +41,7 @@ class GiProject{
 	// Prog
 	GiProjectProg prog_type;
 	int prog_drill_file_id;
+	float prog_drill_depth;
 	bool prog_drill_check;
 	char* prog_drill_file_name;
 
@@ -62,6 +62,7 @@ public:
 
 		prog_type = GiProjectProgUnknown;
 		prog_drill_file_name = 0;
+		prog_drill_depth = 1;
 	}
 
 	VString GetProjectName(){
@@ -123,6 +124,9 @@ public:
 	}
 
 	// Get
+	KiVec2 GetZeroPoint() {
+		return zero_pos;
+	}
 
 	// Set
 	void SetPaint(){
@@ -226,6 +230,12 @@ public:
 				head->pos = size;
 				head->type = GL_POLYGON;
 				head->size = GIPROJECT_RENDER_TRISZ;
+				KiVec4 col = el->GetColor();
+				if (el->AppGetSelected(cel->app_id)) {
+					float c = col.x;
+					col.x = col.z;
+					col.z = c;
+				}
 
 				for(int i = 0; i < GIPROJECT_RENDER_TRISZ; i++){
 					float angle = i * 2 * PI / GIPROJECT_RENDER_TRISZ;
@@ -234,7 +244,7 @@ public:
 					data->z = 0;
 					data ++;
 
-					color->SetColor(el->GetColor());
+					color->SetColor(col);
 					color ++;
 				}
 
@@ -272,6 +282,7 @@ public:
 			head->pos = size;
 			head->size = pel->PaintGetCount();
 			head->type = GL_LINE_LOOP;
+			head++;
 
 			int s = pel->PaintGetData(data, color);
 			data += s;
@@ -287,7 +298,12 @@ public:
 		glsl.UpdateCircleBuffer(paint_cir, paint_cir_count);
 #endif
 
-		//is_paint = 0;		
+		// Test
+		if (head > GlslObjectsBuffer.GetHead() + cir_count + path_count) {
+			print("Stack overflow! DoPaintLayers();\r\n");
+		}
+
+		is_paint = 0;		
 
 		return 1;
 	}
@@ -625,8 +641,8 @@ public:
 				DelPath(tree_selected);					
 			}
 
-			ImGui::Separator();
-			ImGui::Text("OLOLO!");
+			//ImGui::Separator();
+			//ImGui::Text("12345!");
 
 			ImGui::EndPopup();
 		}
@@ -650,9 +666,7 @@ public:
 			ImGui::SameLine();
 
 			float floatValue = 1.0f;
-			if (ImGui::InputFloat("##Float Value", &floatValue)) {
-				// Действия при изменении значения
-			}
+			if (ImGui::InputFloat("##Depth", &prog_drill_depth)) {}
 
 			// Combo
 			ImGui::Text("File:");
@@ -685,7 +699,7 @@ public:
 			}
 
 			// Table
-			if (ImGui::BeginTable("Table", 3)) {
+			if (ImGui::BeginTable("Table", 2)) {
 				// Head
 				ImGui::TableNextColumn();
 				if (ImGui::Checkbox("##Checkbox", &prog_drill_check)) {
@@ -695,8 +709,8 @@ public:
 				ImGui::TableNextColumn();
 				ImGui::Text("Size");
 
-				ImGui::TableNextColumn();
-				ImGui::Text("Tool");
+				//ImGui::TableNextColumn();
+				//ImGui::Text("-");
 
 				// Data
 				auto el = GetLayerById(prog_drill_file_id);
@@ -709,20 +723,29 @@ public:
 							prog_drill_check = GetLayerById(prog_drill_file_id)->AppGetCheckAll();
 						}
 						ImGui::SameLine();
-						ImGui::Text(app->c_type);
+
+						if (ImGui::Selectable(app->c_type, app->selected)) {
+							el->AppSetSelectAll(0);
+							app->selected = 1;
+							SetPaint();
+						}
 
 						ImGui::TableNextColumn();
-						ImGui::Text(dtos(app->dia));
+						if (ImGui::Selectable(app->c_dia, app->selected)) {
+							el->AppSetSelectAll(0);
+							app->selected = 1;
+							SetPaint();
+						}
 
-						ImGui::TableNextColumn();
-						ImGui::Text("Tool");
+						//ImGui::TableNextColumn();
+						//ImGui::Text("Tool");
 					}
 
 				ImGui::EndTable();
 			}
 
 			// Buttons
-			if (ImGui::Button("Create")) {
+			if (ImGui::Button("Create") && tool.id != 0) {
 				CreateDrillPath();
 			}
 			ImGui::SameLine();
@@ -743,20 +766,33 @@ public:
 
 	void CreateDrillPath() {
 		// Get layer
-		auto lel = GetLayerById(prog_drill_file_id);
+		GiLayer* lel = GetLayerById(prog_drill_file_id);
 		if (!lel)
 			return;
 
+		//DrillFile* del = GetDrill(prog_drill_file_id);
+		//if (!del)
+		//	return;
+
 		// New path
-		auto pel = paths.NewE();
+		GiPath* pel = paths.NewE();
 		pel->Init(++layer_id);
+
+		// Tool
+		pel->SetTool(tool, prog_drill_depth);
 
 		// Do circles
 		GiLayerCircle* el = 0;
 
 		while (el = lel->cls.Next(el)) {
+			if (!lel->AppGetEnable(el->app_id))
+				continue;
+
 			pel->AddMove(KiVec2(el->x, el->y));
+			pel->AddDrill(KiVec2(el->x, el->y), prog_drill_depth);
 		}
+
+		SetPaint();
 
 		return;
 	}
@@ -790,12 +826,12 @@ bool GiProjectLayerAddAppCircle(int layer_id, int id, float dia){
 	return 1;
 }
 
-bool GiProjectLayerAddCircle(int layer_id, double x, double y, double dia){
+bool GiProjectLayerAddCircle(int layer_id, int app_id, double x, double y, double dia){
 	GiLayer *el = GiProject.GetLayerById(layer_id);
 	if(!el)
 		return 0;
 
-	el->AddCircle(x, y, dia);
+	el->AddCircle(app_id, x, y, dia);
 	return 1;
 }
 
