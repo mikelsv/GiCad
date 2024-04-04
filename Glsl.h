@@ -366,7 +366,7 @@ public:
 		glUseProgram(0);
 	}
 
-	void Render(GLint tex_id){
+	void Render(float time){
 	   // activate corresponding render state	
 		UseProgram();
 		//glActiveTexture(GL_TEXTURE0);
@@ -441,7 +441,28 @@ public:
 		// Render
 		auto head = GlslObjectsBuffer.GetHead(), head_end = head + GlslObjectsBuffer.GetHeadCount();
 		while(head < head_end){
+			int type;
+
+			//if (head->type == GL_LINE_STRIP) {
+			//	glEnable(GL_LINE_STIPPLE);
+			//	
+			//	static int pattern = 0xAAAA;
+			//	const int bits = 6; // of 16
+			//	//pattern = (pattern >> 1) | ((pattern & 1) << 15);
+			//	//pattern = (int(time * 5.) % 2) == 0 ? 0xAAAA : 0x5555;
+			//	pattern = ((1 << bits) - 1) << (int(time * 12.) % 16);
+			//	pattern += pattern >> 16;
+			//	
+			//	glLineStipple(1, pattern);
+			//}
+
+			// Draw 
 			glDrawArrays(head->type, head->pos, head->size);
+
+			if (head->type == GL_LINE_STRIP) {
+				glDisable(GL_LINE_STIPPLE);
+			}
+
 			head ++;
 		}
 

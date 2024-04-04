@@ -94,12 +94,6 @@
     <None Include="glsl\gicad.vs">
       <Filter>Resources</Filter>
     </None>
-    <None Include="glsl\menu.fs">
-      <Filter>Resources</Filter>
-    </None>
-    <None Include="glsl\menu.vs">
-      <Filter>Resources</Filter>
-    </None>
     <None Include="glsl\popup.fs">
       <Filter>Resources</Filter>
     </None>

@@ -144,12 +144,12 @@ void DrawPaths(inout vec4 fragColor, in vec2 fragCoord){
 
 }
 
-void drawGrid(inout vec4 fragColor, in vec2 fragCoord){
+void drawGrid(inout vec4 fragColor, in vec2 fragCoord, in float border, in float mult = 1){
     float gridSize = 100.;
 
     ivec2 pixelCoord = ivec2(fragCoord.xy);
-    if (mod(pixelCoord.x, gridSize) <= .1 || mod(pixelCoord.y, gridSize) <= .1){
-        fragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    if (mod(pixelCoord.x, gridSize) <= border || mod(pixelCoord.y, gridSize) <= border){
+        fragColor = vec4(1.0, 1.0, 1.0, 1.0) * mult;
     }
 }
 
@@ -164,7 +164,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord){
     fragColor = vec4(col * .5, 1.0);
 
     // Draw grid
-    drawGrid(fragColor, fragCoord);
+    if(iZoom > .5)
+        drawGrid(fragColor, fragCoord * 10., 1 / iZoom * 10., .5);
+    // Main grid
+    drawGrid(fragColor, fragCoord, 1 / iZoom);
+
 
     if(fragCoord.x < 0)
         fragColor -= vec4(.50);
@@ -311,5 +315,5 @@ void main(){
 	mainImage(fragColor, (gl_FragCoord.xy + iMove.xy) / iZoom / xZoom);
 
     // Tools
-    toolBar(fragColor, gl_FragCoord.xy);
+    //toolBar(fragColor, gl_FragCoord.xy);
 }

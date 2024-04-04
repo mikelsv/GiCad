@@ -1,4 +1,4 @@
-#define GIGUI_GLOBAL_SCALE 2.7
+#define GIGUI_GLOBAL_SCALE 2.6
 
 enum GiCadZeroPoint {
 	GiCadZeroPointNull,
@@ -107,20 +107,6 @@ public:
 		data[size] = 0;
 	}
 
-	//void SetIntL0(int val) { // val > 0
-	//	int sz = GetIntLen(val);
-	//	int pow = Pow10(sz - 1);
-	//	int count = 0;
-
-	//	while (count < sz && size + count < maxsize && pow != 0) {
-	//		data[size + count] = 48 + (val / pow) % 10;
-	//		pow /= 10;
-	//		count++;
-	//	}
-
-	//	data[size + count] = 0;
-	//}
-
 	int GetIntLen(int val) {
 		int count = 0;
 
@@ -202,6 +188,64 @@ public:
 template <int size>
 ImGuiCharIdExt(const char(&data)[size]) -> ImGuiCharIdExt<size>;
 
+// Gi Image
+class GiImage {
+	int width, height;
+	unsigned char* data;
+	GLuint texture;
+
+public:
+	GiImage() {
+		width = 0;
+		height = 0;
+		data = 0;
+		texture = 0;
+	}
+
+	bool Open(VString file) {
+		data = stbi_load(file, &width, &height, NULL, 4);
+		if (data == 0)
+			return false;
+
+		// Create a OpenGL texture identifier
+		glGenTextures(1, &texture);
+		glBindTexture(GL_TEXTURE_2D, texture);
+
+		// Setup filtering parameters for display
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Same
+
+		// Upload pixels into texture
+#if defined(GL_UNPACK_ROW_LENGTH) && !defined(__EMSCRIPTEN__)
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+#endif
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		stbi_image_free(data);
+
+		return true;
+	}
+
+	operator void* () {
+		return (void*)(intptr_t)texture;
+	}
+
+};
+
+class GiImages {
+public:
+
+	GiImage new_project, open_project, save_project, save_project2;
+
+	void Init() {
+		new_project.Open("icons/new_project.png");
+		open_project.Open("icons/open_project.png");
+		save_project.Open("icons/save_project.png");
+		save_project2.Open("icons/save_project2.png");
+	}
+
+} GiImages;
 
 // Gi Tools
 class GiToolsEl {
@@ -580,3 +624,92 @@ public:
 
 
 } GiTools;
+
+class GiSortVec2El {
+public:
+	KiVec2 pos;
+	void* poi;
+};
+
+class GiSortVec2 {
+	MString data;
+	GiSortVec2El* els;
+	int pos, size;
+
+public:
+	GiSortVec2() {
+		els = 0;
+		pos = size = 0;
+	}
+
+	void Init(int asize) {
+		data.Reserve(asize * sizeof(GiSortVec2El));
+		els = (GiSortVec2El*) data.data;
+		size = asize;
+		pos = 0;
+	}
+
+	bool Add(KiVec2 p, void *d){
+		if (pos >= size)
+			return 0;
+
+		els[pos].pos = p;
+		els[pos].poi = d;
+
+		pos++;
+		return 1;
+	}
+
+	void SortMinPath() {
+		if (!size)
+			return;
+
+		// Data
+		MString d = data;
+		
+		// Pointers
+		GiSortVec2El *el, *sel, *to = els + size, *res = (GiSortVec2El*)d.data;
+
+		// Pos
+		KiVec2 pos = els[0].pos;
+		int count = 0;
+		
+		while (count < size) {
+			float len = 99999;
+			el = els;
+			
+			for (el; el < to; el++) {
+				if (!el->poi)
+					continue;
+
+				float l = KiVec2(pos - el->pos).Length();
+				if (l < len) {
+					len = l;
+					sel = el;
+				}
+			}
+
+			// Selected
+			res->poi = sel->poi;
+			res->pos = sel->pos;
+			sel->poi = 0;
+			pos = sel->pos;
+			
+			count++;
+			res++;
+		}
+
+		// Result
+		data -= d;
+		els = (GiSortVec2El*)data.data;
+	}
+
+	int GetSize() {
+		return size;
+	}
+
+	GiSortVec2El* GetData() {
+		return els;
+	}
+
+};

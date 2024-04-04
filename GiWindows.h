@@ -43,25 +43,23 @@ public:
 		KiVec2 p = (pos + move) / zoom;
 
 		// Home
-		c_home.Clean();
-		c_home.AddStr("Home: ");
-		c_home.AddStr("X ");
-		c_home.AddFloat2(p.x);
-		c_home.AddStr(", Y ");
-		c_home.AddFloat2(p.y);
+		SetPos(c_home, 0, (pos + move) / zoom);
 
 		// Zero
-		p = (pos + move) / zoom;
-
-		c_zero.Clean();
-		c_zero.AddStr("Zero: ");
-		c_zero.AddStr("X ");
-		c_zero.AddFloat2(p.x);
-		c_zero.AddStr(", Y ");
-		c_zero.AddFloat2(p.y);
+		SetPos(c_zero, 1, (pos + move) / zoom - zero);
 
 		c_zoom.SetStr("Zoom: ");
 		c_zoom.AddFloat2(zoom);
+	}
+
+	void SetPos(ImGuiCharIdExt<31>& chr, int type, KiVec2 pos) {
+		chr.Clean();
+		chr.AddStr(type == 0 ? "Home: " : "Zero: ");
+		chr.AddStr("(");
+		chr.AddFloat2(pos.x);
+		chr.AddStr(", ");
+		chr.AddFloat2(pos.y);
+		chr.AddStr(") ");
 	}
 
 	void UpdateFps(int fps){
@@ -221,7 +219,7 @@ public:
 		SetMove(0);
 	}
 
-	void ResetView100p() {
+	void ResetViewP(int p) {
 		KiVec4 rect = GiProject.GetLayersRect();
 
 		if (rect.IsNull())
@@ -229,6 +227,8 @@ public:
 
 		float width = rect.z - rect.x, height = rect.w - rect.y;
 		float scale = min(screen.x / width, screen.y / height);
+
+		scale = scale * p / 100;
 
 		SetZoom(scale);
 		SetMove(KiVec2(rect.x * scale - (screen.x - width * scale) / 2, rect.y * scale - (screen.y - height * scale) / 2));
@@ -279,11 +279,12 @@ public:
 
 		//
 		//GiProject.Render(move, KiVec2(screen.x, screen.y), zoom);
+		float wtime = (ttime.dtime() - stime) / 1000;
 
 		glsl_main.Render((ttime.dtime() - stime) / 1000);
 
 		//glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-		glsl_objects.Render(0);
+		glsl_objects.Render(wtime);
 		glsl_popup.Render((ttime.dtime() - stime) / 1000);
 		//glBindFramebuffer(GL_FRAMEBUFFER, 0);		
 	}
@@ -565,16 +566,35 @@ void GuiMenuRender() {
 	if (ImGui::BeginMainMenuBar()) {
 		ImGui::SetWindowFontScale(GIGUI_GLOBAL_SCALE);
 
+		ImVec2 isize(32, 32);
+
+		// File
 		if (ImGui::BeginMenu("File")) {
+			// New Project
 			if (ImGui::MenuItem("New Projects", "Ctrl+N"))
 				GiProject.NewProject();
 
+			ImGui::SameLine();
+			ImGui::Image(GiImages.new_project, isize);
+			
+			// Open Project
 			if (ImGui::MenuItem("Open Project", "Ctrl+O"))
 				GiProject.OpenProject();
 
-			if (ImGui::MenuItem("Save project", "Ctrl+S")){}
-			if (ImGui::MenuItem("Save project as", "Ctrl+Shift+S")) {}
+			ImGui::SameLine();
+			ImGui::Image(GiImages.open_project, isize);
 
+			// Save project
+			if (ImGui::MenuItem("Save project", "Ctrl+S")){}
+			ImGui::SameLine();
+			ImGui::Image(GiImages.save_project, isize);
+
+			// Save project as
+			if (ImGui::MenuItem("Save project as", "Ctrl+Shift+S")) {}
+			ImGui::SameLine();
+			ImGui::Image(GiImages.save_project2, isize);
+
+			// Exit
 			if (ImGui::MenuItem("Exit", ""))
 				GiWindowsClose();
 
@@ -598,12 +618,30 @@ void GuiMenuRender() {
 
 		// View
 		if (ImGui::BeginMenu("View")) {
+			static int zoom = 100;
+			int nzoom = 0;
+
 			if (ImGui::MenuItem("Reset view", "Ctrl+0")){
 				GiCadWindows.ResetView();				
 			}
-			if (ImGui::MenuItem("100%", "Ctrl+1")){
-				GiCadWindows.ResetView100p();
+
+			if (ImGui::MenuItem("100%", "Ctrl+1"))
+				nzoom = 100;
+			
+			if (ImGui::MenuItem("75%", "Ctrl+1"))
+				nzoom = 75;
+			
+			if (ImGui::MenuItem("50%", "Ctrl+1"))
+				nzoom = 50;
+
+			if (ImGui::SliderInt("%", &zoom, 0, 150))
+				nzoom = zoom;
+
+			if (nzoom) {
+				zoom = nzoom;
+				GiCadWindows.ResetViewP(zoom);
 			}
+
 			ImGui::EndMenu();
 		}
 		ImGui::Separator();
@@ -663,8 +701,7 @@ void GuiMenuRender() {
 }
 
 void GuiLayersRender() {
-	GiProject.GuiTreeRender();
-	GiProject.GuiProg();
+	GiProject.GuiRender();
 	GiTools.Render();
 
 	// Status Bar
@@ -692,5 +729,5 @@ void GuiRender() {
 
 
 void GiWindowsResetView100p() {
-	GiCadWindows.ResetView100p();
+	GiCadWindows.ResetViewP(100);
 }

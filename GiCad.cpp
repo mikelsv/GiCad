@@ -14,6 +14,7 @@
 
 Versions PROJECTVER[] = {
     // new version to up
+	"0.0.1.1", "04.04.2024 22:27",
 	"0.0.1.0", "26.03.2024 19:14",
 	"0.0.0.9", "25.03.2024 14:58",
 	"0.0.0.8", "21.03.2024 11:22",
@@ -44,6 +45,10 @@ VString _msv_zero_str(&_msv_zero_code, 1);
 
 // OpenGL
 #include "../msvcore2/opengl/mgl.h"
+
+// Stb
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb/stb_image.h"
 
 // Base
 #include "Base.h"
@@ -122,11 +127,14 @@ int main(int args, char* arg[], char* env[]){
 	// Init Tools
 	GiTools.Init();
 
+	// Imit Images
+	GiImages.Init();
+
 	// Initialize ImGUI
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& imgui = ImGui::GetIO(); (void)imgui;
-	ImGui::StyleColorsClassic();
+	ImGui::StyleColorsLight();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 460");
 

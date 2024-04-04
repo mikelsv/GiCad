@@ -29,8 +29,8 @@ class GiPath {
 
 	// Opt
 	bool is_active;
-	int layer_id;	
-
+	int layer_id;
+	int show_perc;
 
 public:
 	GiPath() : gui_check("##Checkbox"), gui_color("##Color") {}
@@ -39,6 +39,7 @@ public:
 		layer_id = id;
 		is_active = 1;
 		color = KiVec4(1, 0, 0, 1);
+		show_perc = 100;
 
 		SetName(MString("Path ") + itos(layer_id));
 		UpdateGui();
@@ -77,6 +78,10 @@ public:
 		return name;
 	}
 
+	int GetShowPerc() {
+		return show_perc;
+	}
+
 	// Set
 	void SetActive(bool val) {
 		is_active = val;
@@ -93,6 +98,10 @@ public:
 	void SetTool(GiToolsEl &t, float d) {
 		tool = t;
 		depth = d;
+	}
+
+	void SetShowPerc(int val) {
+		show_perc = val;
 	}
 
 	// Data
@@ -156,12 +165,14 @@ public:
 	int PaintGetData(GlslObjectsData* data, GlslObjectsColor* color) {
 		GiPathEl* el = 0;
 		int count = 0;
+		int prount = paths.Size() * show_perc / 100;
 
+		// Write
 		while (el = paths.Next(el)){
 			data[count].x = el->x;
 			data[count].y = el->y;
 
-			color[count].color = this->color;
+			color[count].color = count <= prount ? this->color : this->color - .5;
 			count++;
 		}
 

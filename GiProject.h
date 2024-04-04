@@ -1,5 +1,5 @@
 //#define GIPROJECT_RENDER_GLSL
-#define GIPROJECT_RENDER_TRISZ	12
+#define GIPROJECT_RENDER_TRISZ	16
 
 void GiWindowsUpdateTitle();
 void GiWindowsResetView100p();
@@ -45,6 +45,9 @@ class GiProject{
 	bool prog_drill_check;
 	char* prog_drill_file_name;
 
+	// Path Show Options
+	int opt_path_show;
+
 	// Drill
 	GiToolsEl tool;
 
@@ -63,6 +66,8 @@ public:
 		prog_type = GiProjectProgUnknown;
 		prog_drill_file_name = 0;
 		prog_drill_depth = 1;
+
+		opt_path_show = 0;
 	}
 
 	VString GetProjectName(){
@@ -281,7 +286,7 @@ public:
 
 			head->pos = size;
 			head->size = pel->PaintGetCount();
-			head->type = GL_LINE_LOOP;
+			head->type = GL_LINE_STRIP;
 			head++;
 
 			int s = pel->PaintGetData(data, color);
@@ -357,8 +362,8 @@ public:
 	}
 
 	void DelGrbl(int id) {
-		GiPath* el = GetPath(id);
-		paths.Free(el);
+		GrblFile* el = GetGrbl(id);
+		grbs.Free(el);
 		DelLayer(id);
 	}
 
@@ -478,6 +483,12 @@ public:
 	}
 
 	// Render
+	void GuiRender() {
+		GuiTreeRender();
+		GuiOptionRender();
+		GuiProg();
+	}
+
 	void GuiTreeRender(){
 		bool isChecked = false;
 		KiVec4 color = { 1, 0., 0, 1 };
@@ -613,7 +624,7 @@ public:
 		
 		GuiShowTreeMenu();
 
-		ImGui::End();		
+		ImGui::End();
 	}
 
 	void GuiShowTreeMenu() {
@@ -632,13 +643,18 @@ public:
 						SavePath(tree_selected, file);
 				}
 				ImGui::Separator();
+
+				// Control
+				if (ImGui::MenuItem("Show options")) {
+					opt_path_show = tree_selected;
+				}
 			}
 
 			// Close / Delete
 			if (ImGui::MenuItem(tree_type != GiProjectTypePath ? "Close" : "Delete")) {
 				DelGrbl(tree_selected);
 				DelDrill(tree_selected);
-				DelPath(tree_selected);					
+				DelPath(tree_selected);
 			}
 
 			//ImGui::Separator();
@@ -646,6 +662,35 @@ public:
 
 			ImGui::EndPopup();
 		}
+	}
+
+	void GuiOptionRender() {
+		if (!opt_path_show)
+			return;
+
+		GiPath* el = GetPath(opt_path_show);
+		if (!el)
+			return;
+
+		ImGui::Begin("Path show options", nullptr, 0);
+		ImGui::SetWindowFontScale(GIGUI_GLOBAL_SCALE);
+
+		ImGui::Text("Show: ");
+		ImGui::SameLine();
+
+		int val = el->GetShowPerc();
+		if (ImGui::SliderInt("%", &val, 0, 100)) {
+			el->SetShowPerc(val);
+			SetPaint();
+		}
+		ImGui::SameLine();
+
+		// Close
+		if (ImGui::Button("Close")) {
+			opt_path_show = 0;
+		}
+
+		ImGui::End();
 	}
 
 	void SelectedTool(GiToolsEl* t) {
@@ -784,12 +829,37 @@ public:
 		// Do circles
 		GiLayerCircle* el = 0;
 
+		// Sort
+		GiSortVec2 sort;
+		int count = 0;
+
+		// -> Count
 		while (el = lel->cls.Next(el)) {
 			if (!lel->AppGetEnable(el->app_id))
 				continue;
+			count++;
+		}
 
-			pel->AddMove(KiVec2(el->x, el->y));
-			pel->AddDrill(KiVec2(el->x, el->y), prog_drill_depth);
+		sort.Init(count);
+
+		// -> Add
+		while (el = lel->cls.Next(el)) {
+			if (!lel->AppGetEnable(el->app_id))
+				continue;
+			sort.Add(KiVec2(el->x, el->y), el);
+		}
+
+		// ->Sort
+		sort.SortMinPath();
+
+		// Sort result
+		GiSortVec2El* res = sort.GetData();
+
+		// Make path
+		for (int i = 0; i < count; i++) {
+			pel->AddMove(res->pos);
+			pel->AddDrill(res->pos, prog_drill_depth);
+			res++;
 		}
 
 		SetPaint();

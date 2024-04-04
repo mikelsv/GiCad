@@ -57,6 +57,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalIncludeDirectories>../msvcore2/include;imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -109,8 +110,6 @@
   <ItemGroup>
     <None Include="glsl\gicad.fs" />
     <None Include="glsl\gicad.vs" />
-    <None Include="glsl\menu.fs" />
-    <None Include="glsl\menu.vs" />
     <None Include="glsl\objects.fs" />
     <None Include="glsl\objects.vs" />
     <None Include="glsl\popup.fs" />

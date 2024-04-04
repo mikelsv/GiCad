@@ -403,14 +403,16 @@ public:
 						// Start / end angles
 						double sangle = atan2(sy - cy, sx - cx);
 						double eangle = atan2(ey - cy, ex - cx);
+
 						bool stop = 0;
 						
-						if(cmd_g == 02 && 0)
-							if(sangle > eangle){
-								double t = sangle;
-								sangle = eangle;
-								eangle = t;
-								stop = 1;
+						if(cmd_g == 02)
+							if (sangle < eangle) {
+								eangle -= PI * 2;
+								//double t = sangle;
+								//sangle = eangle;
+								//eangle = t;
+								//stop = 1;
 							}
 							//if(sangle > eangle)
 							//	sangle -= PI;
@@ -418,12 +420,18 @@ public:
 						//	if(eangle < sangle)
 						//		eangle += PI;
 
-						if(cmd_g75){
+						if (cmd_g == 03)
+							if (sangle > eangle)
+								eangle += PI * 2;
+
+						if(cmd_g75){							
+							if(eangle == sangle)
+								eangle += cmd_g == 02 ? -PI * 2 : PI * 2;
 							cmd_g75 = 0;
-							sangle += PI;
 						}
 
 						int points = int(ceil(abs(eangle - sangle) / (PI / 180)));
+						//int points = int(ceil(abs(eangle - sangle)) * rad * rad);
 
 						if(stop)
 							points = -1;
