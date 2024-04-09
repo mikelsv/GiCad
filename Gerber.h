@@ -3,11 +3,13 @@ enum GiLayerAppType {
 	GiLayerAppTypeCircle
 };
 
-
 bool GiProjectLayerAddAppCircle(int layer_id, int id, float dia);
-bool GiProjectLayerAddCircle(int layer_id, int app_id, double x, double y, double dia);
-bool GiProjectLayerAddPath(int layer_id);
-bool GiProjectLayerAddPPoi(int layer_id, double x, double y);
+bool GiProjectLayerCmdHole(int layer_id, int app_id, double x, double y);
+bool GiProjectLayerCmdObject(int layer_id, int app_id);
+bool GiProjectLayerCmdMove(int layer_id, int app_id, double x, double y);
+bool GiProjectLayerCmdRot(int layer_id, int app_id, double x, double y, double cx, double cy, int opt);
+
+//bool GiProjectLayerAddPPoi(int layer_id, double x, double y);
 bool GiProjectLayerSetColor(int layer_id, KiVec4 color);
 bool GiProjectLayerClean(int layer_id);
 
@@ -63,12 +65,20 @@ public:
 		return is_open = is_active = Read(data);
 	}
 
+	bool SetFile(VString file, int mtime, int size) {
+		path = file;
+		state.st_mtime = mtime;
+		state.st_size = size;
+
+		return is_open = is_active = 1;
+	}
+
 	virtual bool Read(VString data){ 
 		return 0;
 	}
 
-	bool AddLayerCircle(int app_id, double x, double y, double dia){
-		return GiProjectLayerAddCircle(layer_id, app_id, x, y, dia);
+	bool AddLayerHole(int app_id, double x, double y, double dia){
+		return GiProjectLayerCmdHole(layer_id, app_id, x, y);
 	}
 
 	bool LayerClean(){
@@ -96,6 +106,11 @@ public:
 		return color;
 	}
 
+	sstat64 GetState() {
+		return state;
+	}
+
+	// Set
 	void SetColor(const KiVec4 &c) {
 		color = c;
 	}
@@ -173,97 +188,6 @@ public:
 
 };
 
-template<int size>
-struct ImGuiChar {
-	char str[size];
-
-public:
-	constexpr ImGuiChar(const char(&data)[size]) {
-		memcpy(str, data, size);
-		str[size - 1] = '\0';
-	}
-
-	operator char* () {
-		return str;
-	}
-};
-
-template <int size>
-ImGuiChar(const char(&data)[size]) -> ImGuiChar<size>;
-
-
-/*
-using namespace std;
-#include <iostream>
-#include <array>
-#include <string>
-#include <string_view>
-#include <ranges>
-
-
-template <std::size_t Size>
-struct ConstexprString {
-	std::array<char, Size> data;
-	inline constexpr auto begin() -> char* {
-		return this->data.begin();
-	};
-	inline constexpr auto begin() const -> const char* {
-		return this->data.begin();
-	};
-	inline constexpr auto end() -> char* {
-		return this->data.end();
-	};
-	inline constexpr auto end() const -> const char* {
-		return this->data.end();
-	};
-	static constexpr auto kSize = Size == 0 ? 0 : Size - 1;
-	inline constexpr ConstexprString() = default;
-	inline constexpr ConstexprString(const char(&data)[Size]) : data{} {
-		std::ranges::copy_n(data, Size, this->data.begin());
-	};
-	inline constexpr ConstexprString(std::string data) : data{} {
-		std::ranges::copy_n(data.begin(), Size, this->data.begin());
-	};
-	inline constexpr ConstexprString(std::array<char, Size> data) : data(std::move(data)) {};
-	inline constexpr auto size() const {
-		return Size == 0 ? 0 : Size - 1;
-	};
-	//inline constexpr operator std::string_view() const& {
-	//	return { this->begin() };
-	//};
-//	inline constexpr bool operator==(std::string_view other) const {
-//		return static_cast<std::string_view>(*this) == other;
-//	};
-	template <std::size_t SSize>
-	inline constexpr auto operator+(const ConstexprString<SSize>& other) -> ConstexprString<Size + SSize - 1> {
-		ConstexprString<Size + SSize - 1> response;
-		std::ranges::copy_n(this->begin(), Size - 1, response.begin());
-		std::ranges::copy_n(other.begin(), SSize, response.begin() + Size - 1);
-		return response;
-	};
-	inline constexpr ConstexprString(const ConstexprString&) = default;
-	inline constexpr ConstexprString(ConstexprString&&) = default;
-};
-
-
-template <std::size_t Count>
-inline constexpr auto CreateStringWith(char c) {
-	ConstexprString<Count + 1> str = {};
-	for (std::size_t i = 0; i < Count; i++) {
-		str.data[i] = c;
-	};
-	str.data[Count] = '\0';
-	return str;
-};
-
-
-template <std::size_t Size>
-ConstexprString(const char(&data)[Size]) -> ConstexprString<Size>;
-*/
-
-
-
-
 class GrblFile : public GiBaseFile {
 private:
 	// Data
@@ -278,9 +202,9 @@ private:
 	// Apertures
 	OList<GrblFileAperture> aps;
 
-	// ImGui
-	//ImGuiCharId<11> gui_check;
-	//ImGuiCharId<11> gui_check;
+	// Temp
+	VString res[8];
+	int resc = 8;
 
 public:
 
@@ -299,7 +223,7 @@ public:
 			}
 
 			if(line.incompareu("%TO.")){
-				GiProjectLayerAddPath(layer_id);
+				GiProjectLayerCmdObject(layer_id, cmd_d);
 			}
 
 			// %
@@ -312,24 +236,17 @@ public:
 					polarity = GrblFilePolarityDark;
 				}
 
-				if(line.incompareu("%FSLA")){ // %FSLAX46Y46*%
-					VString res[8];
-					int resi = PartLines(line, "%FSLAX$dY$d*%", res);
+				if(line.incompareu("%FSLA")){ // %FSLAX46Y46*%					
+					int resi = PartLines(line, "%FSLAX$dY$d*%", res, resc);
 					if(resi != 2)
 						return Error(LString() + "Command bad: " + line);
 
 					fsla_x = res[0].toi();
 					fsla_y = res[1].toi();
-
-					//line = PartLine(line, line, "%FSLAX");
-					//fsla_x = PartLine(line, line, "Y").tod();
-					//line = PartLine(line, line, "Y");
-					//fsla_y = PartLine(line, line, "*%").tod();
 				}
 
 				if(line.incompareu("%ADD")){ // %ADD10C,0.120000*%
-					VString res[8];
-					int resi = PartLines(line, "%ADD$d$c,$f*%", res);
+					int resi = PartLines(line, "%ADD$d$c,$f*%", res, resc);
 					int ok = 0;
 
 					if(resi == 3)
@@ -339,7 +256,7 @@ public:
 						}
 					
 					if(!ok)
-						resi = PartLines(line, "%ADD$d$c,$fX$f*%", res);
+						resi = PartLines(line, "%ADD$d$c,$fX$f*%", res, resc);
 
 					if(resi == 4 && !ok)
 						if(res[1] == "O" || res[1] == "R"){
@@ -355,12 +272,10 @@ public:
 			// Any
 			else{
 				if(!ReadLine(line)){
-					//Error(LString() + "Code not found: " + line);
+					Error(LString() + "Code not found: " + line);
 					return 0;
 				}
 			}
-
-
 		}
 
 		return 1;
@@ -387,10 +302,28 @@ public:
 			// Code
 			switch(code){
 			case '*':
-				if(line_code == 'X'){
-					if(cmd_g == 1)
-						GiProjectLayerAddPPoi(layer_id, cmd_x / 1000000., cmd_y / 1000000.);
+				if (line_code == 'X') {
+					if (cmd_g == 1)
+						GiProjectLayerCmdMove(layer_id, cmd_d, cmd_x / 1000000., cmd_y / 1000000.);
+					else if (cmd_g == 02) {
+						int opt = cmd_g75 ? GI_LAYER_CMD_G75 : 0;
+						GiProjectLayerCmdRot(layer_id, cmd_d, cmd_x / 1000000., cmd_y / 1000000., cmd_i / 1000000., cmd_j / 1000000., opt);
+						cmd_g75 = 0;
+					}
+					else if (cmd_g == 03) {
+						int opt = GI_LAYER_CMD_G03 + (cmd_g75 ? GI_LAYER_CMD_G75 : 0);
+						GiProjectLayerCmdRot(layer_id, cmd_d, cmd_x / 1000000., cmd_y / 1000000., cmd_i / 1000000., cmd_j / 1000000., opt);
+						cmd_g75 = 0;
+					}
+				}
+				
+				return 1;
+
+					/*
 					else if(cmd_g == 02 || cmd_g == 03){
+						int opt = GI_LAYER_CMD_G75;
+
+
 						//cmd_i += 1000000.;
 						//cmd_j += 1000000.;
 
@@ -453,6 +386,7 @@ public:
 					cmd_y2 = cmd_y;
 				}
 				return 1;
+				*/
 
 			case 'X':
 				cmd_x = val.toi();
@@ -634,6 +568,9 @@ public:
 			VString key, val;
 			unsigned char *f = line, *l = line, *t = line.endu(), k;
 
+			VString res[8];
+			int resc = 8;
+
 			// Ignore comment
 			if(line[0] == ';')
 				return 1;
@@ -659,8 +596,7 @@ public:
 				} else if(key == "G"){
 					return 1;
 				} else if(key == "T" && state == DrillFileHead){
-					VString res[8];
-					int resi = PartLines(line, "T$dC$f", res);
+					int resi = PartLines(line, "T$dC$f", res, resc);
 					if(resi != 2)
 						return Error(LString() + "Bad code: " + line);
 
@@ -669,8 +605,7 @@ public:
 
 					return 1;
 				} else if(key == "T" && state == DrillFileData){
-					VString res[8];
-					int resi = PartLines(line, "T$d", res);
+					int resi = PartLines(line, "T$d", res, resc);
 					if(resi != 1)
 						return Error(LString() + "Bad code: " + line);
 
@@ -679,8 +614,7 @@ public:
 
 					return 1;
 				} else if(key == "X" && state == DrillFileData){
-					VString res[8];
-					int resi = PartLines(line, "X$fY$f", res);
+					int resi = PartLines(line, "X$fY$f", res, resc);
 					if(resi != 2)
 						return Error(LString() + "Bad code: " + line);
 					SetDrill(cmd_t, res[0].tod(), res[1].tod());
@@ -718,7 +652,7 @@ public:
 	}
 
 	bool SetDrill(int t, double x, double y){
-		return AddLayerCircle(t, x, y, cmd_t_dia);
+		return AddLayerHole(t, x, y, cmd_t_dia);
 	}
 
 	void Clean(){

@@ -468,6 +468,12 @@ static void GiWndMouseMotionCallback(GLFWwindow* window, double x, double y){
 }
 
 void GiWndMouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset){
+	ImGui::GetIO().MouseWheelH = xoffset;
+	ImGui::GetIO().MouseWheel = yoffset;
+
+	if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow))
+		return;
+	
 	double xpos, ypos;
     glfwGetCursorPos(window, &xpos, &ypos);
 
@@ -679,6 +685,9 @@ void GuiMenuRender() {
 		if (ImGui::BeginMenu("Path")) {
 			if (ImGui::MenuItem("Drill", "")) {
 				GiProject.SetProg(GiProjectProgDrill);
+			}
+			if (ImGui::MenuItem("Laser", "")) {
+				GiProject.SetProg(GiProjectProgLaser);
 			}
 			ImGui::EndMenu();
 		}

@@ -1,5 +1,6 @@
 enum GiPathType {
 	GiPathTypeUnknown,
+	GiPathTypePos,
 	GiPathTypeMove,
 	GiPathTypeDrill
 };
@@ -162,19 +163,24 @@ public:
 		return paths.Size();
 	}
 
-	int PaintGetData(GlslObjectsData* data, GlslObjectsColor* color) {
+	int PaintGetData() {
+		GlslObjectsData data;
+		GlslObjectsColor color;
+
 		GiPathEl* el = 0;
 		int count = 0;
 		int prount = paths.Size() * show_perc / 100;
 
 		// Write
 		while (el = paths.Next(el)){
-			data[count].x = el->x;
-			data[count].y = el->y;
+			data.x = el->x;
+			data.y = el->y;
 
-			color[count].color = count <= prount ? this->color : this->color - .5;
+			color.color = count <= prount ? this->color : this->color - .5;
 			count++;
-		}
+
+			GlslObjectsBuffer.AddData(data, color);
+		}		
 
 		return count;
 	}

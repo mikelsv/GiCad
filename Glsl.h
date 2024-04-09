@@ -1,12 +1,3 @@
-struct GlslCircleEl{
-	float px, py, dia;
-
-	float _none;
-};
-
-//struct GlslPath
-
-
 // Font
 class GlslFontTexture{
 	GLuint texture;
@@ -72,7 +63,7 @@ public:
 		//uni_GiCircles = glGetUniformBlockIndex(prog_id, "GiCircles");
 		uni_GiCirclesCount = GetUniformLocation("GiCirclesCount");
 
-		MakeCircleBuffer();
+		//MakeCircleBuffer();
 
 		UpdateRes(res);
 		UpdateZoom(1);
@@ -94,43 +85,6 @@ public:
 	}
 
 	GLuint ssbo_cir;
-
-	//GLuint ssbo;
-    
-	void MakeCircleBuffer(){
-		GlslCircleEl f[2] = {0., 0., 10., 100., 100., 10.};
-
-		glGenBuffers(1, &ssbo_cir);
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_cir);
-		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(f), f, GL_STATIC_DRAW); //sizeof(data) only works for statically sized C/C++ arrays.
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo_cir);
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
-		//return ;
-
-		UseProgram();
-		glUniform1ui(uni_GiCirclesCount, 2);
-		glUseProgram(0);
-
-
-		//glGenBuffers(1, &ssbo);
-		//glBindBuffer(GL_UNIFORM_BUFFER, ssbo);		
-
-		//glBufferData(GL_UNIFORM_BUFFER, sizeof(float) * 2 * 2, f, GL_STATIC_DRAW);
-		//glBindBufferBase(GL_UNIFORM_BUFFER, uni_GiCircles, ssbo);
-		////glBindBuffer(GL_ARRAY_BUFFER, uni_GiCircles);
-		//glBindBuffer(GL_UNIFORM_BUFFER, NULL);
-	}
-
-	void UpdateCircleBuffer(VString data, int size){
-		UseProgram();
-
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_cir);
-		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GlslCircleEl) * size, data, GL_STATIC_DRAW); //sizeof(data) only works for statically sized C/C++ arrays.
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
-		
-		glUniform1ui(uni_GiCirclesCount, size);
-		glUseProgram(0);		
-	}
 
 	void UpdateRes(KiVec2 res){
 		UseProgram();
@@ -244,24 +198,62 @@ public:
 class GlslObjectsBuffer{
 	MString head, data, color;
 	int head_count, data_count;
+	int head_size, data_size;
+	GlslObjectsHead* last_head;
 	int update;
 
 public:
-	void Reserve(int hcount, int dcount){
-		if(head.size() < sizeof(GlslObjectsHead) * hcount)
-			head.Reserve(sizeof(GlslObjectsHead) * hcount);
+	void AddHead(const GlslObjectsHead& h) {
 
-		if(data.size() < sizeof(GlslObjectsData) * dcount)
-			data.Reserve(sizeof(GlslObjectsData) * dcount);
+		// Reserve
+		if (head_count >= head_size)
+			ReserveHead(head_size + S1K);
 
-		if(color.size() < sizeof(GlslObjectsColor) * dcount)
-			color.Reserve(sizeof(GlslObjectsColor) * dcount);
+		// Pointers
+		GlslObjectsHead* el = GetHead() + head_count;
+		
+		//Set
+		*el = h;
 
-		head_count = hcount;
-		data_count = dcount;
-		update = 1;
+		// Init pos & size
+		el->pos = data_count;
+		el->size = 0;
 
-		return ;
+		// Last head
+		last_head = el;
+
+		head_count++;
+	}
+
+	void AddData(const GlslObjectsData& d, const GlslObjectsColor& c) {
+		// Reserve
+		if (data_count >= data_size)
+			ReserveData(data_size + S1K);
+
+		// Pointers
+		GlslObjectsData* el = GetData() + data_count;
+		GlslObjectsColor* cel = GetColors() + data_count;
+
+		// Set
+		*el = d;
+		*cel = c;
+
+		// Update head size
+		last_head->size++;
+
+		data_count++;
+	}
+
+	// Reserve
+	void ReserveHead(int size) {
+		head.Reserve(sizeof(GlslObjectsHead) * size);
+		head_size = size;
+	}
+
+	void ReserveData(int size) {
+		data.Reserve(sizeof(GlslObjectsData) * size);
+		color.Reserve(sizeof(GlslObjectsColor) * size);
+		data_size = size;
 	}
 
 	GlslObjectsHead* GetHead(){
@@ -284,12 +276,19 @@ public:
 		return data_count;
 	}
 
+	// Update
 	bool GetUpdate(){
 		return update;
 	}
 
-	void Updated(){
-		update = 0;
+	void SetUpdate(bool val){
+		update = val;
+	}
+
+	// Clean
+	void Clean() {
+		head_count = 0;
+		data_count = 0;
 	}
 
 } GlslObjectsBuffer;
@@ -414,7 +413,7 @@ public:
 			   GL_FALSE,           // normalized?
 			   0,                  // stride
 			   (void*)0            // array buffer offset
-			);			
+			);
 
 			// Color buffer
 			glBindBuffer(GL_ARRAY_BUFFER, vertex_color);
@@ -431,7 +430,7 @@ public:
 			glEnableVertexAttribArray(1);
 
 			// Ok
-			GlslObjectsBuffer.Updated();
+			GlslObjectsBuffer.SetUpdate(0);
 
 			// Unbind
 			glBindBuffer(GL_ARRAY_BUFFER, 0);

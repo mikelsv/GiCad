@@ -1,4 +1,9 @@
-#define GIGUI_GLOBAL_SCALE 2.6
+#define GIGUI_GLOBAL_SCALE 2.5
+
+#define GI_LAYER_CMD_G75 1
+#define GI_LAYER_CMD_G03 2
+
+#define GI_LAYER_PAINT_TRISZ	16
 
 enum GiCadZeroPoint {
 	GiCadZeroPointNull,
@@ -38,8 +43,8 @@ public:
 	}
 };
 
-template <int size>
-ImGuiCharId(const char(&data)[size]) -> ImGuiCharId<size>;
+//template <int size>
+//ImGuiCharId(const char(&data)[size]) -> ImGuiCharId<size>;
 
 // ImGui CharId Ext
 template<int maxsize>
@@ -185,8 +190,8 @@ public:
 	}
 };
 
-template <int size>
-ImGuiCharIdExt(const char(&data)[size]) -> ImGuiCharIdExt<size>;
+//template <int size>
+//ImGuiCharIdExt(const char(&data)[size]) -> ImGuiCharIdExt<size>;
 
 // Gi Image
 class GiImage {
@@ -247,11 +252,20 @@ public:
 
 } GiImages;
 
-// Gi Tools
+// Gi Tools //
+// Tools Type
+enum GiToolsType {
+	GiToolsTypeDrill = 0,
+	GiToolsTypeEndMill = 1,
+	GiToolsTypeGraver = 2,
+	GiToolsTypeLaser = 3
+};
+
 class GiToolsEl {
 public:
-	// Base
+	// Base	
 	int id;
+	GiToolsType type;
 	MString name;
 	float diameter, depth;
 	int speed;
@@ -414,6 +428,7 @@ public:
 
 		// Set
 		tool->id = json["tool.id"].toi();
+		tool->type = (GiToolsType)json["tool.type"].toi();
 		tool->name = json["tool.name"];
 		tool->diameter = json["tool.dia"].tod();
 		tool->depth = json["tool.depth"].tod();
@@ -435,6 +450,7 @@ public:
 		JsonEncode json;
 		json.Up("tool");
 		json("id", itos(tool->id));
+		json("type", itos(tool->type));
 		json("name", tool->name);
 		json("dia", dtos(tool->diameter));
 		json("depth", dtos(tool->depth));
@@ -489,15 +505,15 @@ public:
 
 	// Render
 	void Render() {
-		if(show_tools)
+		if (show_tools)
 			RenderTools();
 	}
 
 	void RenderTools() {
-		ImGui::Begin("Tools");
+		ImGui::Begin("Tools", &show_tools);
 		ImGui::SetWindowFontScale(GIGUI_GLOBAL_SCALE);
 
-		if(tool_select)
+		if (tool_select)
 			if (ImGui::Button("Select Tool")) {
 				GiProjectSelectedTool(GetSelectedTool());
 				ShowTools(0);
@@ -514,7 +530,7 @@ public:
 			ImGui::Text("Tool");
 
 			// Body
-			GiToolsEl* el = 0;
+			GiToolsEl *el = 0;
 			while (el = tools.Next(el)) {
 
 				ImGui::TableNextColumn();
@@ -535,6 +551,8 @@ public:
 
 			ImGui::EndTable();
 		}
+
+		ImGui::Separator();
 
 		// New tool
 		if (ImGui::Button("New Tool")) {
@@ -567,11 +585,13 @@ public:
 	}
 
 	void RenderToolsEdit() {
+		bool show_window;
+
 		if (!tool)
 			return;
 
 		// Window
-		ImGui::Begin("Tool edit");
+		ImGui::Begin("Tool edit", &show_window);
 		ImGui::SetWindowFontScale(GIGUI_GLOBAL_SCALE);
 
 		// Id
@@ -579,8 +599,17 @@ public:
 		ImGui::SameLine();
 		ImGui::Text(tool->gui_id);
 
+		// Type
+		const char *items[] = { "Drill", "EndMill", "Graver", "Laser" };
+		int item = tool->type;
+
+		ImGui::SameLine();
+		if (ImGui::Combo("##ToolType", &item, items, IM_ARRAYSIZE(items))){
+			tool->type = (GiToolsType)item;
+		}
+
 		// Name
-		ImGui::Separator();	
+		ImGui::Separator();
 		ImGui::Text("Name: ");
 		ImGui::SameLine();
 		if (ImGui::InputText("##Name", tool->gui_name, tool->gui_name.GetMaxSize()))  {
@@ -613,7 +642,7 @@ public:
 		ImGui::SameLine();
 
 		// Cancel
-		if (ImGui::Button("Cancel")) {
+		if (ImGui::Button("Cancel") || !show_window) {
 			CancelTool();
 			ShowToolsEdit(0);
 		}
@@ -634,29 +663,37 @@ public:
 class GiSortVec2 {
 	MString data;
 	GiSortVec2El* els;
-	int pos, size;
+	int size, maxsize;
 
 public:
 	GiSortVec2() {
 		els = 0;
-		pos = size = 0;
+		size = maxsize = 0;
 	}
 
-	void Init(int asize) {
-		data.Reserve(asize * sizeof(GiSortVec2El));
-		els = (GiSortVec2El*) data.data;
-		size = asize;
-		pos = 0;
+	void Reserve(int newsize) {
+		data.Reserve(newsize * sizeof(GiSortVec2El));
+		els = (GiSortVec2El*)data.data;
+		maxsize = newsize;
 	}
+
+	//void Init(int asize) {
+	//	data.Reserve(asize * sizeof(GiSortVec2El));
+	//	els = (GiSortVec2El*) data.data;
+	//	size = asize;
+	//	pos = 0;
+	//}
 
 	bool Add(KiVec2 p, void *d){
-		if (pos >= size)
-			return 0;
+		if (size == maxsize)
+			Reserve(maxsize + 10000);
+		//if (pos >= size)
+		//	return 0;
 
-		els[pos].pos = p;
-		els[pos].poi = d;
+		els[size].pos = p;
+		els[size].poi = d;
 
-		pos++;
+		size++;
 		return 1;
 	}
 

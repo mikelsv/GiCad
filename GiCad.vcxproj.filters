@@ -32,7 +32,7 @@
     <ClCompile Include="..\msvcore2\VString.cpp">
       <Filter>Source files</Filter>
     </ClCompile>
-    <ClCompile Include="tinyfiledialogs.c">
+    <ClCompile Include="tinyfiledialogs.cpp">
       <Filter>Source files</Filter>
     </ClCompile>
     <ClCompile Include="imgui\imgui.cpp">
