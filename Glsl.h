@@ -180,6 +180,14 @@ public:
 	MRGB color;
 };
 
+class GiLayerCmdEl;
+
+class GlslObjectsHeadExt {
+public:
+	GiLayerCmdEl *cmd;
+	KiVec4 color, acolor, scolor;
+};
+
 class GlslObjectsData{
 public:
 	float x, y, z;	
@@ -195,22 +203,26 @@ public:
 
 };
 
-class GlslObjectsBuffer{
-	MString head, data, color;
+class _GlslObjectsBuffer{
+	MString head, hext, data, color;
 	int head_count, data_count;
 	int head_size, data_size;
-	GlslObjectsHead* last_head;
-	int update;
+	
+	GlslObjectsHead *last_head, *last_mouse;
+	//KiVec4 last_color;
+	
+	bool update;
+	int mouse_area;
 
 public:
-	void AddHead(const GlslObjectsHead& h) {
-
+	void AddHead(const GlslObjectsHead& h, const GlslObjectsHeadExt &ext) {
 		// Reserve
 		if (head_count >= head_size)
 			ReserveHead(head_size + S1K);
 
 		// Pointers
 		GlslObjectsHead* el = GetHead() + head_count;
+		GlslObjectsHeadExt *eel = GetHeadExt() + head_count;
 		
 		//Set
 		*el = h;
@@ -218,6 +230,13 @@ public:
 		// Init pos & size
 		el->pos = data_count;
 		el->size = 0;
+
+		//// Ext
+		//if (ext)
+		//	*eel = *ext;
+		//else
+		//	eel->cmd = 0;
+		*eel = ext;
 
 		// Last head
 		last_head = el;
@@ -247,6 +266,7 @@ public:
 	// Reserve
 	void ReserveHead(int size) {
 		head.Reserve(sizeof(GlslObjectsHead) * size);
+		hext.Reserve(sizeof(GlslObjectsHeadExt) * size);
 		head_size = size;
 	}
 
@@ -258,6 +278,10 @@ public:
 
 	GlslObjectsHead* GetHead(){
 		return (GlslObjectsHead*) head.data;
+	}
+
+	GlslObjectsHeadExt *GetHeadExt() {
+		return (GlslObjectsHeadExt*)hext.data;
 	}
 
 	GlslObjectsData* GetData(){
@@ -285,10 +309,127 @@ public:
 		update = val;
 	}
 
+	// Mouse
+	GlslObjectsHead* GetMouseOver() {
+		return last_mouse;
+	}
+
+	GlslObjectsHeadExt* GetMouseOverExt() {
+		return GetExtByHead(last_mouse);
+	}
+
+	GlslObjectsHead *GetHeadByExt(GlslObjectsHeadExt *id) {
+		GlslObjectsHead *head = GetHead();
+		GlslObjectsHeadExt *hext = GetHeadExt();
+
+		if (!id)
+			return 0;
+
+		return head + (id - hext);
+	}
+
+	GlslObjectsHeadExt* GetExtByHead(GlslObjectsHead *id) {
+		GlslObjectsHead *head = GetHead();
+		GlslObjectsHeadExt *hext = GetHeadExt();
+
+		if (!id)
+			return 0;
+
+		return hext + (id - head);
+	}
+
+
+
+	void SetMouseOver(GlslObjectsHead *head) {
+		if (head == last_mouse)
+			return ;
+
+		//if (last_mouse)
+		//	SetColor(last_mouse, last_color);
+
+		last_mouse = head;
+
+		if (!head)
+			return;
+
+		GlslObjectsHeadExt *ext = GetMouseOverExt();
+
+		//last_color = GetFirstColor(last_mouse);
+		SetColor(last_mouse, ext->acolor);
+	}
+
+	KiVec4 GetFirstColor(GlslObjectsHead *head) {
+		if (!head || !head->size)
+			return KiVec4();
+
+		return (GetColors() + head->pos)->color;
+	}
+
+	void SetColor(GlslObjectsHead *head, KiVec4 col) {
+		GlslObjectsColor *color = GetColors();
+
+		for (int i = head->pos; i < head->pos + head->size; i++) {
+			color[i].color = col;
+		}
+
+		update = 1;
+	}
+
+	void SetMouseSelection(KiVec2 p1, KiVec2 p2, bool down) {
+		if (!down && mouse_area < 2)
+			return;
+
+		if (!mouse_area) {
+			GlslObjectsHead head;
+			GlslObjectsHeadExt hext;
+			GlslObjectsData data;
+			GlslObjectsColor color;
+
+			// Set
+			head.type = GI_GL_MOUSE_AREA;
+			hext.cmd = 0;
+			color.color = KiVec4(1, 0, 0, 1);
+
+			// Add
+			AddHead(head, hext);
+			AddData(data, color);
+			AddData(data, color);
+			AddData(data, color);
+			AddData(data, color);
+
+			mouse_area = 2;
+		}
+
+		// Get Head
+		GlslObjectsHead *head = GetHead() + GetHeadCount() - 1;
+		GlslObjectsData *data = GetData() + head->pos;
+
+		// Down state
+		if (!down) {
+			p1 = p2 = KiVec2();
+			mouse_area = 1;
+		} else
+			mouse_area = 2;
+
+		// Set
+		data[0].x = p1.x;
+		data[0].y = p1.y;
+		data[1].x = p2.x;
+		data[1].y = p1.y;
+		data[2].x = p2.x;
+		data[2].y = p2.y;
+		data[3].x = p1.x;
+		data[3].y = p2.y;		
+
+		SetUpdate(1);
+	}
+
 	// Clean
 	void Clean() {
 		head_count = 0;
 		data_count = 0;
+		last_mouse = 0;
+		mouse_area = 0;
 	}
 
 } GlslObjectsBuffer;
@@ -440,25 +581,31 @@ public:
 		// Render
 		auto head = GlslObjectsBuffer.GetHead(), head_end = head + GlslObjectsBuffer.GetHeadCount();
 		while(head < head_end){
-			int type;
+			int type = head->type;
 
-			//if (head->type == GL_LINE_STRIP) {
-			//	glEnable(GL_LINE_STIPPLE);
-			//	
-			//	static int pattern = 0xAAAA;
-			//	const int bits = 6; // of 16
-			//	//pattern = (pattern >> 1) | ((pattern & 1) << 15);
-			//	//pattern = (int(time * 5.) % 2) == 0 ? 0xAAAA : 0x5555;
-			//	pattern = ((1 << bits) - 1) << (int(time * 12.) % 16);
-			//	pattern += pattern >> 16;
-			//	
-			//	glLineStipple(1, pattern);
-			//}
+			if (type == GI_GL_MOUSE_AREA)
+				type = GL_LINE_LOOP;
+
+			if (type == GI_GL_PATH)
+				type = GL_LINE_STRIP;
+
+			if (head->type == GI_GL_MOUSE_AREA || head->type == GI_GL_PATH) {
+				glEnable(GL_LINE_STIPPLE);
+				
+				static int pattern = 0xAAAA;
+				const int bits = 6; // of 16
+				//pattern = (pattern >> 1) | ((pattern & 1) << 15);
+				//pattern = (int(time * 5.) % 2) == 0 ? 0xAAAA : 0x5555;
+				pattern = ((1 << bits) - 1) << (int(time * 12.) % 16);
+				pattern += pattern >> 16;
+				
+				glLineStipple(1, pattern);
+			}
 
 			// Draw 
-			glDrawArrays(head->type, head->pos, head->size);
+			glDrawArrays(type, head->pos, head->size);
 
-			if (head->type == GL_LINE_STRIP) {
+			if (head->type == GI_GL_MOUSE_AREA || head->type == GI_GL_PATH) {
 				glDisable(GL_LINE_STIPPLE);
 			}
 

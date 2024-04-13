@@ -8,22 +8,34 @@
 class GiWndMouse {
 public:
 	KiVec2 cur, hold;
+	double click;
 	bool down;
 
 	GiWndMouse(){
 		cur = hold = KiInt2();
 		down = 0;
+		click = 0;
+	}
+
+	void Move(KiVec2 pos){
+		cur = pos;
+		click = 0;
 	}
 
 	void Click(bool state){
-		if(state)
+		if (state) {
 			hold = cur;
+			click = glfwGetTime();
+		}
 		else
 			hold = KiInt2();
 
 		down = state;
 	}
 
+	bool IsClick() const{
+		return (glfwGetTime() - click) < 1;
+	}
 };
 
 class GiWndToolBar {
@@ -273,7 +285,7 @@ public:
 	// Render
 	void Render(){
 		if(GiProject.IsPaintLayers()){
-			GiProject.DoPaintLayers(glsl_main);
+			GiProject.PaintLayers(glsl_main);
 			//glsl.SetCirData(GiProject.GetPaintData());
 		}
 
@@ -382,19 +394,32 @@ static void GiWndResize(GLFWwindow* window, int w, int h){
 }
 
 static void GiWndKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods){
-	int on_title = 0;
+	ImGuiIO &io = ImGui::GetIO();
+	ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
+
+	if (key == GLFW_KEY_A && mods == GLFW_MOD_CONTROL && action == GLFW_PRESS) {
+		GiProject.SelectAll(1);
+	}
 }
 
 static void GiWndMouseClickCallback(GLFWwindow* window, int button, int action, int mods){
 	// ImGui
 	ImGui::GetIO().MouseDown[button] = action;
-	
-	
+
+	if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow))
+		return;
+
 	KiVec2 click = KiVec2(GiCadWindows.mouse[2].cur.x, GiCadWindows.screen.y - GiCadWindows.mouse[2].cur.y);
 	int clicked = 0;
 
+	int ctrl_on = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS;
+
 	switch (button) {
+		// Left button
 		case GLFW_MOUSE_BUTTON_1:
+			if (!action && GiCadWindows.mouse[0].down)
+				GiProject.OnMouseAreaClick(1, ctrl_on);
+
 			GiCadWindows.mouse[0].Click(action);
 			GiCadWindows.glsl_main.UpdateMouseSelect(GiCadWindows.mouse[0].cur, GiCadWindows.mouse[0].hold, GiCadWindows.mouse[0].down);
 			//GiCadWindows.mouse_hold = GiCadWindows.mouse_cur;
@@ -403,8 +428,14 @@ static void GiWndMouseClickCallback(GLFWwindow* window, int button, int action, 
 
 			GiCadWindows.glsl_popup.OnClick(KiVec2(GiCadWindows.mouse[2].cur.x, GiCadWindows.screen.y - GiCadWindows.mouse[2].cur.y));
 
+			if (GiCadWindows.mouse[0].IsClick() && !action)
+				GiProject.OnMouseClick(ctrl_on);
+
+			GlslObjectsBuffer.SetMouseSelection(0, 0, action);			
+
 		break;
 
+		// Right button
 		case GLFW_MOUSE_BUTTON_2:
 			GiCadWindows.mouse[GLFW_MOUSE_BUTTON_2].Click(action);
 		break;
@@ -429,6 +460,14 @@ static void GiWndMouseMotionCallback(GLFWwindow* window, double x, double y){
 	// Left button
 	GiCadWindows.mouse[0].cur = KiVec2(x, GiCadWindows.screen.y - y) / GISCREENZOOM;
 	GiCadWindows.glsl_main.UpdateMouseSelect(GiCadWindows.mouse[0].cur, GiCadWindows.mouse[0].hold, GiCadWindows.mouse[0].down);
+
+	//if (GiCadWindows.mouse[0].down) {
+		GlslObjectsBuffer.SetMouseSelection(
+			(GiCadWindows.mouse[0].cur + GiCadWindows.move) / GiCadWindows.zoom,
+			(GiCadWindows.mouse[0].hold + GiCadWindows.move) / GiCadWindows.zoom,
+			GiCadWindows.mouse[0].down
+		);
+	//}
 
 	// Center button
 	if(GiCadWindows.mouse[2].down){
@@ -464,6 +503,12 @@ static void GiWndMouseMotionCallback(GLFWwindow* window, double x, double y){
 	//	mousey += y;
 	//}
 
+	int ctrl_on = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS;
+
+	KiVec2 mouse = (GiCadWindows.mouse[0].cur + GiCadWindows.move) / GiCadWindows.zoom;
+	KiVec2 mouse2 = (GiCadWindows.mouse[0].hold + GiCadWindows.move) / GiCadWindows.zoom;
+
+	GiProject.OnMouseMove(mouse, mouse2, GiCadWindows.mouse[0].down, GiCadWindows.zoom, ctrl_on);
 	GiWndToolBar.UpdateMouse(GiCadWindows.mouse[0].cur, GiCadWindows.move, GiProject.GetZeroPoint(), GiCadWindows.zoom);
 }
 
@@ -479,7 +524,6 @@ void GiWndMouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset
 
 	float zoom = GiCadWindows.zoom + yoffset * 0.2f;
 	//KiVec2 move = KiVec2(GiCadWindows.size) / GiCadWindows.zoom;
-	
 
 	if(yoffset > 0){
 		zoom = min(GICAD_ZOOM_MAX, (1 + 1 / 3.0) * GiCadWindows.zoom);
@@ -490,9 +534,14 @@ void GiWndMouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset
 		zoom = max(GICAD_ZOOM_MIN, (1 - 1 / 3.0) * GiCadWindows.zoom);
 
 	//KiVec2 size = KiVec2(GiCadWindows.size);
-	KiVec2 move = (GiCadWindows.screen / GiCadWindows.zoom - GiCadWindows.screen / zoom) / 2.;
+	//KiVec2 move = (GiCadWindows.screen / GiCadWindows.zoom - GiCadWindows.screen / zoom) / 2.;
 	//GiCadWindows.move = GiCadWindows.move + (GiCadWindows.size / GiCadWindows.zoom - GiCadWindows.size / zoom) / 2.;
-	
+
+	// New move
+	KiVec2 move = (GiCadWindows.mouse[0].cur + GiCadWindows.move) / GiCadWindows.zoom;
+	move = move * zoom - GiCadWindows.mouse[0].cur;
+
+	GiCadWindows.SetMove(move);	
 
 	float center_x = GiCadWindows.screen.x / 2;
 	float center_y = GiCadWindows.screen.y / 2;
@@ -735,7 +784,6 @@ void GuiRender() {
 	GuiMenuRender();
 	GuiLayersRender();
 }
-
 
 void GiWindowsResetView100p() {
 	GiCadWindows.ResetViewP(100);

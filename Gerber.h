@@ -6,7 +6,7 @@ enum GiLayerAppType {
 bool GiProjectLayerAddAppCircle(int layer_id, int id, float dia);
 bool GiProjectLayerCmdHole(int layer_id, int app_id, double x, double y);
 bool GiProjectLayerCmdObject(int layer_id, int app_id);
-bool GiProjectLayerCmdMove(int layer_id, int app_id, double x, double y);
+bool GiProjectLayerCmdMove(int layer_id, int app_id, double x, double y, int cmd_d);
 bool GiProjectLayerCmdRot(int layer_id, int app_id, double x, double y, double cx, double cy, int opt);
 
 //bool GiProjectLayerAddPPoi(int layer_id, double x, double y);
@@ -24,7 +24,7 @@ class GiBaseFile{
 private :
 	// File
 	MString path, file;
-	bool is_open, is_active;
+	bool is_open, is_active, is_unselect;
 
 	// State
 	sstat64 state;
@@ -110,6 +110,10 @@ public:
 		return state;
 	}
 
+	bool GetUnselect() {
+		return is_unselect;
+	}
+
 	// Set
 	void SetColor(const KiVec4 &c) {
 		color = c;
@@ -117,6 +121,10 @@ public:
 
 	void SetActive(bool active) {
 		is_active = active;
+	}
+
+	void SetUnselect(bool val) {
+		is_unselect = val;
 	}
 
 	void SetLayerId(int id){
@@ -304,7 +312,7 @@ public:
 			case '*':
 				if (line_code == 'X') {
 					if (cmd_g == 1)
-						GiProjectLayerCmdMove(layer_id, cmd_d, cmd_x / 1000000., cmd_y / 1000000.);
+						GiProjectLayerCmdMove(layer_id, cmd_d, cmd_x / 1000000., cmd_y / 1000000., cmd_d);
 					else if (cmd_g == 02) {
 						int opt = cmd_g75 ? GI_LAYER_CMD_G75 : 0;
 						GiProjectLayerCmdRot(layer_id, cmd_d, cmd_x / 1000000., cmd_y / 1000000., cmd_i / 1000000., cmd_j / 1000000., opt);

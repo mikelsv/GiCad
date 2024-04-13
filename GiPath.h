@@ -17,7 +17,8 @@ public:
 class GiPath {
 	// Main
 	MString name;
-	OList<GiPathEl> paths;
+	//OList<GiPathEl> paths;
+	GiLayerCmd cmds;
 
 	// Tool
 	GiToolsEl tool;
@@ -48,18 +49,11 @@ public:
 
 	// Add
 	void AddMove(KiVec2 pos) {
-		auto el = paths.NewE();
-		el->type = GiPathTypeMove;
-		el->x = pos.x;
-		el->y = pos.y;
+		cmds.AddCmdMove(pos);
 	}
 
 	void AddDrill(KiVec2 pos, float depth) {
-		auto el = paths.NewE();
-		el->type = GiPathTypeDrill;
-		el->x = pos.x;
-		el->y = pos.y;
-		el->d = depth;
+		cmds.AddCmdDrill(pos, depth);
 	}
 
 	// Get
@@ -107,7 +101,7 @@ public:
 
 	// Data
 	MString GetSaveData(KiVec2 zero) {
-		GiPathEl* el = 0;
+		GiLayerCmdEl *el = 0;
 		LString ls;
 
 		// Safe
@@ -119,16 +113,16 @@ public:
 		ls + "G21 G17 G90" + "\r\n";
 		ls + "M3 " + tool.speed + "\r\n";
 
-		while (el = paths.Next(el)) {
+		while (el = cmds.cmds.Next(el)) {
 			if (el->type == GiPathTypeMove) {
 				ls + "G0Z10" + "\r\n";
-				ls + "X" + (el->x - zero.x) + "Y" + (el->y - zero.y) + "\r\n";
+				ls + "X" + (el->pos.x - zero.x) + "Y" + (el->pos.y - zero.y) + "\r\n";
 			}
 
 			if (el->type == GiPathTypeDrill) {
 				float depth = 0;
-				while (depth < el->d) {
-					float d = min(el->d, depth + tool.depth);
+				while (depth < el->depth) {
+					float d = min(el->depth, depth + tool.depth);
 					
 					ls + "G1Z" + (float(depth - 2) * -1) + "F60" + "\r\n";
 					ls + "G1Z" + (d * -1) + "F60" + "\r\n";
@@ -159,25 +153,25 @@ public:
 	}
 
 	// Paint
-	int PaintGetCount() {
-		return paths.Size();
-	}
+	//int PaintGetCount() {
+	//	return paths.Size();
+	//}
 
 	int PaintGetData() {
 		GlslObjectsData data;
 		GlslObjectsColor color;
 
-		GiPathEl* el = 0;
+		GiLayerCmdEl *el = 0;
 		int count = 0;
-		int prount = paths.Size() * show_perc / 100;
+		int prount = cmds.cmds.Size() * show_perc / 100;
 
 		// Write
-		while (el = paths.Next(el)){
-			data.x = el->x;
-			data.y = el->y;
+		while (el = cmds.cmds.Next(el)){
+			data.x = el->pos.x;
+			data.y = el->pos.y;
 
 			color.color = count <= prount ? this->color : this->color - .5;
-			count++;
+			//count++;
 
 			GlslObjectsBuffer.AddData(data, color);
 		}		
@@ -187,7 +181,7 @@ public:
 
 	// Clean
 	void Clean() {
-		paths.Clean();
+		cmds.Clean();
 	}
 
 };

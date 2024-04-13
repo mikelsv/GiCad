@@ -257,26 +257,40 @@ public:
 		return 1;
 	}*/
 
-	bool DoPaintLayers(GlslMain &glsl){
+	bool PaintLayers(GlslMain &glsl){
 		GiLayer *el = 0;
 		GiPath *pel = 0;
 
 		// Objects
 		GlslObjectsHead head;
+		GlslObjectsHeadExt hext;
 		GlslObjectsData data;
 		GlslObjectsColor color;
 
 		GlslObjectsBuffer.Clean();
 
 		// Write layers data
-		while(el = lays.Next(el)){
+		while (el = lays.Next(el)) {
 
 			GiLayerCmd *cel = 0, *cel_pos = 0, *cel_cir = 0;
 
 			if (!el->GetActive())
 				continue;
 
-			el->cmds.Paint(el->GetColor());
+			// Get Base file
+			GiBaseFile *base = GetGrbl(el->GetId());
+			if (!base)
+				base = GetDrill(el->GetId());
+
+			// Unselect
+			bool unselect = 0;
+			if (base) {
+				unselect = base->GetUnselect();
+				base->SetUnselect(0);
+			}
+
+			// Paint
+			el->cmds.Paint(el->GetColor(), unselect);
 
 			/*/ Circles
 			while(cel = el->cmds.Next(cel)){
@@ -336,8 +350,8 @@ public:
 			if (!pel->GetActive())
 				continue;
 
-			head.type = GL_LINE_STRIP;
-			GlslObjectsBuffer.AddHead(head);
+			head.type = GI_GL_PATH;
+			GlslObjectsBuffer.AddHead(head, hext);
 
 			pel->PaintGetData();
 		}
@@ -572,6 +586,8 @@ public:
 				isChecked = el->GetActive();
 				if (ImGui::Checkbox(el->GuiNameCheck(), &isChecked)) {
 					el->SetActive(isChecked);
+					if(isChecked)
+						el->SetUnselect(1);
 					SetPaint();
 				}
 
@@ -608,6 +624,8 @@ public:
 				isChecked = el->GetActive();
 				if (ImGui::Checkbox(el->GuiNameCheck(), &isChecked)) {
 					el->SetActive(isChecked);
+					if (isChecked)
+						el->SetUnselect(1);
 					SetPaint();
 				}
 
@@ -976,6 +994,234 @@ public:
 		ImGui::End();
 	}
 
+	// Mouse
+	void OnMouseMove(KiVec2 mouse, KiVec2 mouse2, bool area, float zoom, bool ctrl_on) {
+		GiLayer *el;
+		
+		// Test
+		GlslObjectsHead *head = GlslObjectsBuffer.GetHead(), *head_end = head + GlslObjectsBuffer.GetHeadCount();
+		GlslObjectsData *data = GlslObjectsBuffer.GetData();
+		GlslObjectsColor *color = GlslObjectsBuffer.GetColors();
+		KiVec4 mpos(mouse.x, mouse.y, mouse2.x, mouse2.y);
+		float line = .5;
+
+		while (head < head_end) {
+			int cross = 0, pos = head->pos, to = pos + head->size;
+			//bool inside = false;
+			bool select = 0, aselect = 0;
+
+			// Polygon
+			if (head->type == GL_POLYGON) {
+				bool inside = false;
+
+				// Mouse once
+				for (int i = 0, j = head->size - 1; i < head->size; j = i++){
+					if ((data[pos + i].y > mouse.y) != (data[pos + j].y > mouse.y) &&
+						mouse.x < (data[pos + j].x - data[pos + i].x) * (mouse.y - data[pos + i].y) / (data[pos + j].y - data[pos + i].y) + data[pos + i].x){
+						inside = !inside;
+					}
+				} 
+
+				// Mouse area
+				if(area)
+					for (int i = 0; i < head->size; i++) {
+						if (mpos.InRect(KiVec2(data[pos + i].x, data[pos + i].y))) {
+							aselect = 1;
+							break;
+						}
+					}
+
+				select = inside;
+			}
+			else if (head->type == GL_LINES) {
+				if ((head->size & 2) != 0 && !_error_gerber_reader_align) {
+					_error_gerber_reader_align = 1;
+					GiWindowsInsertPopUp("Error gerber align!");
+				}
+
+				if ((head->size % 2) != 0)
+					to--;
+
+				double epsilon = 0.1;
+				for (int i = pos; i < to; i+= 2) {
+					KiVec2 &point = mouse;
+					KiVec2 p1 = KiVec2(data[i].x, data[i].y), p2 = KiVec2(data[i + 1].x, data[i + 1].y);
+
+					float dx1 = p2.x - p1.x;
+					float dy1 = p2.y - p1.y;
+
+					float dx = point.x - p1.x;
+					float dy = point.y - p1.y;
+
+					float S = dx1 * dy - dx * dy1;
+					float ab = sqrt(dx1 * dx1 + dy1 * dy1);
+					float h = S / ab;
+
+					float d = 1;
+					
+					if (abs(h) < d / 2) {
+						//select = 1;
+						//break;
+					}
+
+					// Проверяем, что точка лежит на прямой, заданной двумя точками p1 и p2
+					if (fabs((p2.y - p1.y) * point.x - (p2.x - p1.x) * point.y + p2.x * p1.y - p2.y * p1.x) < epsilon) {
+						// Проверяем, что точка находится внутри отрезка между точками p1 и p2
+						if ((point.x + line >= min(p1.x, p2.x) && point.x - line <= max(p1.x, p2.x)) &&
+							(point.y + line >= min(p1.y, p2.y) && point.y - line <= max(p1.y, p2.y))) {
+							select = 1;
+							break;
+						}
+					}
+				}
+
+				// Area
+				if(area)
+					for (int i = pos; i < to; i += 2) {
+						KiVec2 &point = mouse;
+						KiVec2 p1 = KiVec2(data[i].x, data[i].y), p2 = KiVec2(data[i + 1].x, data[i + 1].y);
+
+						if (mpos.InRect(p1) || mpos.InRect(p2)) {
+							aselect = 1;
+							break;
+						}
+					}
+			}
+			else if (head->type == GI_GL_MOUSE_AREA) {}
+			else
+			for (int i = pos; i < to; i++) {
+				if (KiVec2(data[i].x - mouse.x, data[i].y - mouse.y).Length() < 2 / zoom)
+					select = 1;
+			}
+
+			// On area
+			if (area) {
+				GlslObjectsHeadExt *hext = GlslObjectsBuffer.GetExtByHead(head);
+				if (hext->cmd && hext->cmd->aselect != aselect)
+					OnMouseMoveActiveArea(head, hext, aselect);
+			}
+
+			// Update color
+			if (select) {
+				OnMouseMoveActive(head, area);
+
+				if(!area)
+					return;
+			}
+
+			head++;			
+		}
+
+		OnMouseMoveActive(0, area);
+
+		return;
+	}
+
+	void OnMouseUpdateColor(GlslObjectsHead *head, GlslObjectsHeadExt *hext, bool over) {
+		//GlslObjectsHeadExt *hext = GlslObjectsBuffer.GetMouseOverExt();
+
+		int mix = (hext->cmd->selected || hext->cmd->aselect) * 50 + over * 50;
+
+		//SString ss;
+		//ss.Format("SetColor %d %d %d \r\n", mix, hext->cmd->selected, hext->cmd->aselect);
+		//print(ss);
+
+		GlslObjectsBuffer.SetColor(head, GiColorMix(hext->color, hext->scolor, mix));
+	}
+
+	void OnMouseMoveActive(GlslObjectsHead *head, bool area) {
+		GlslObjectsHeadExt *hext;
+
+		// No action
+		if (GlslObjectsBuffer.GetMouseOver() == head)
+			return;
+		
+		// Un Over
+		if (GlslObjectsBuffer.GetMouseOver()) {
+			hext = GlslObjectsBuffer.GetMouseOverExt();
+			//GlslObjectsBuffer.SetColor(GlslObjectsBuffer.GetMouseOver(), ColorMix(hext->color, hext->scolor, hext->cmd->selected * 50));
+			OnMouseUpdateColor(GlslObjectsBuffer.GetMouseOver(), hext, 0);
+		}
+
+		//
+		if (!head)
+			return GlslObjectsBuffer.SetMouseOver(head);
+
+		// Over
+		hext = GlslObjectsBuffer.GetExtByHead(head);
+		GlslObjectsBuffer.SetMouseOver(head);
+		//GlslObjectsBuffer.SetColor(head, hext->cmd->selected == 0 ? hext->acolor : hext->scolor);
+		//GlslObjectsBuffer.SetColor(head, ColorMix(hext->color, hext->scolor, hext->cmd->selected * 50 + 50));
+		OnMouseUpdateColor(head, hext, GlslObjectsBuffer.GetMouseOver() == head);
+	}
+
+	void OnMouseMoveActiveArea(GlslObjectsHead *head, GlslObjectsHeadExt *hext, bool state) {
+		hext->cmd->aselect = state;
+		//GlslObjectsBuffer.SetColor(head, ColorMix(hext->color, hext->scolor, state * 50));
+		OnMouseUpdateColor(head, hext, GlslObjectsBuffer.GetMouseOver() == head);
+	}
+
+	void OnMouseClick(bool ctrl_on) {
+		GlslObjectsHeadExt *hext;
+
+		if (!ctrl_on)
+			SelectAll(0);
+
+		if (hext = GlslObjectsBuffer.GetMouseOverExt()) {
+			hext->cmd->selected = !hext->cmd->selected;
+			OnMouseUpdateColor(GlslObjectsBuffer.GetMouseOver(), hext, 1);
+			//GlslObjectsBuffer.SetColor(GlslObjectsBuffer.GetMouseOver(), hext->cmd->selected ? hext->scolor : hext->acolor);
+			//GlslObjectsBuffer.SetColor(GlslObjectsBuffer.GetMouseOver(), ColorMix(hext->color, hext->scolor, hext->cmd->selected * 50 + 50));
+		}
+
+		return;
+	}
+
+	void OnMouseAreaClick(bool state, bool ctrl_on) {
+		GiLayer *el;
+
+		// Objects
+		GlslObjectsHead *head;// = GlslObjectsBuffer.GetHead(), *head_end = head + GlslObjectsBuffer.GetHeadCount();
+		GlslObjectsHeadExt *hext = GlslObjectsBuffer.GetHeadExt(), *hext_end = hext + GlslObjectsBuffer.GetHeadCount();
+
+		for (hext; hext < hext_end; hext++) {
+			head = GlslObjectsBuffer.GetHeadByExt(hext);
+
+			if (hext->cmd) {
+				if (state) {
+					// Control 
+					if(!ctrl_on)
+						hext->cmd->selected = hext->cmd->aselect;
+					else
+						hext->cmd->selected |= hext->cmd->aselect;
+					hext->cmd->aselect = 0;
+					OnMouseUpdateColor(head, hext, GlslObjectsBuffer.GetMouseOver() == head);
+				}
+				else {
+					//hext->cmd->selected = hext->cmd->aselect;
+					hext->cmd->aselect = 0;
+					//GlslObjectsBuffer.SetColor(head, ColorMix(hext->color, hext->scolor, hext->cmd->selected * 50));
+					OnMouseUpdateColor(head, hext, GlslObjectsBuffer.GetMouseOver() == head);
+				}
+			}
+		}
+	}
+
+	void SelectAll(bool val) {
+		GlslObjectsHead *head;// = GlslObjectsBuffer.GetHead(), *head_end = head + GlslObjectsBuffer.GetHeadCount();
+		GlslObjectsHeadExt *hext = GlslObjectsBuffer.GetHeadExt(), *hext_end = hext + GlslObjectsBuffer.GetHeadCount();
+
+		for (hext; hext < hext_end; hext++) {
+			if (hext->cmd)
+				if (hext->cmd->selected != val) {
+					hext->cmd->selected = val;
+					head = GlslObjectsBuffer.GetHeadByExt(hext);
+					//GlslObjectsBuffer.SetColor(head, ColorMix(hext->color, hext->scolor, hext->cmd->selected * 50));
+					OnMouseUpdateColor(head, hext, GlslObjectsBuffer.GetMouseOver() == head);
+				}
+		}
+	}
+
 	void CreateDrillPath() {
 		// Get layer
 		GiLayer* lel = GetLayerById(prog_drill_file_id);
@@ -998,16 +1244,6 @@ public:
 
 		// Sort
 		GiSortVec2 sort;
-		//int count = 0;
-
-		//// -> Count
-		//while (el = lel->cls.Next(el)) {
-		//	if (!lel->AppGetEnable(el->app_id))
-		//		continue;
-		//	count++;
-		//}
-
-		//sort.Init(count);
 
 		// -> Add
 		while (el = lel->cmds.cmds.Next(el)) {
@@ -1085,12 +1321,13 @@ bool GiProjectLayerCmdObject(int layer_id, int app_id){
 	return 1;
 }
 
-bool GiProjectLayerCmdMove(int layer_id, int app_id, double x, double y){
+bool GiProjectLayerCmdMove(int layer_id, int app_id, double x, double y, int cmd_d){
 	GiLayer *el = GiProject.GetLayerById(layer_id);
 	if(!el)
 		return 0;
 
 	el->AddCmdMove(app_id, x, y);
+
 	return 1;
 }
 

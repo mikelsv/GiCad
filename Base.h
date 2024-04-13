@@ -1,9 +1,14 @@
-#define GIGUI_GLOBAL_SCALE 2.5
+#define GIGUI_GLOBAL_SCALE 2.4
 
 #define GI_LAYER_CMD_G75 1
 #define GI_LAYER_CMD_G03 2
 
 #define GI_LAYER_PAINT_TRISZ	16
+
+#define GI_GL_MOUSE_AREA	1999
+#define GI_GL_PATH	2000
+
+bool _error_gerber_reader_align = 0;
 
 enum GiCadZeroPoint {
 	GiCadZeroPointNull,
@@ -750,3 +755,8 @@ public:
 	}
 
 };
+
+// Mix 0 - 100%
+KiVec4 GiColorMix(KiVec4 color, KiVec4 scolor, int mix) {
+	return color * (100 - mix) / 100 + scolor * mix / 100;
+}

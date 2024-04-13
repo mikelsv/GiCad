@@ -14,6 +14,7 @@
 
 Versions PROJECTVER[] = {
     // new version to up
+	"0.0.1.3", "13.04.2024 12:06",
 	"0.0.1.2", "09.04.2024 06:36",
 	"0.0.1.1", "04.04.2024 22:27",
 	"0.0.1.0", "26.03.2024 19:14",
@@ -147,7 +148,7 @@ int main(int args, char* arg[], char* env[]){
 
 	// Callbacks
 	glfwSetWindowSizeCallback(window, GiWndResize);
-	//glfwSetKeyCallback(window, GiWndKeyCallback);
+	glfwSetKeyCallback(window, GiWndKeyCallback);
 	glfwSetMouseButtonCallback(window, GiWndMouseClickCallback);
 	glfwSetCursorPosCallback(window, GiWndMouseMotionCallback);
 	glfwSetScrollCallback(window, GiWndMouseScrollCallback);
