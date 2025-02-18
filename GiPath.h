@@ -18,8 +18,10 @@ class GiPath {
 	// Main
 	MString name;
 	//OList<GiPathEl> paths;
+public:
 	GiLayerCmd cmds;
 
+protected:
 	// Tool
 	GiToolsEl tool;
 	float depth;
@@ -48,8 +50,32 @@ public:
 	}
 
 	// Add
+	void AddObject() {
+		cmds.AddObject(0);
+	}
+
+	void AddHole(KiVec2 pos, GiLayerAppEl *app) {
+		cmds.AddCmdHole(app, pos.x, pos.y);
+	}
+
+	void AddHoleToCircle(KiVec2 pos, float dia) {
+		cmds.AddHoleToCircle(pos, dia);
+	}
+
 	void AddMove(KiVec2 pos) {
-		cmds.AddCmdMove(pos);
+		cmds.AddCmdMove(0, pos);
+	}
+
+	void AddCir(KiVec2 pos) {
+		cmds.AddCmdCir(0, pos);
+	}
+
+	void AddRot(KiVec2 pos, int opt) {
+		cmds.AddCmdRotOnly(0, pos, opt);
+	}
+
+	void AddCircle(GiLayerAppEl *app, KiVec2 pos) {
+		cmds.AddCmdCircle(app, pos);
 	}
 
 	void AddDrill(KiVec2 pos, float depth) {
@@ -108,31 +134,41 @@ public:
 		if (tool.depth < 0.1)
 			tool.depth = 0.1;
 
+		SString fspeed, pspeed;
+		float v = tool.feed * 60;
+		fspeed.Format("%f", v);
+
+		v = tool.plunge * 60;
+		pspeed.Format("%f", v);
+
 		// Head
 		ls + "; Gicad " + PROJECTVER->ver + "\r\n";
 		ls + "G21 G17 G90" + "\r\n";
-		ls + "M3 " + tool.speed + "\r\n";
+		ls + "G0 Z5" + "\r\n";
+		ls + "S" + tool.speed + "M3\r\n";
 
 		while (el = cmds.cmds.Next(el)) {
-			if (el->type == GiPathTypeMove) {
+			if (el->type == GiLayerCmdMove) {
 				ls + "G0Z10" + "\r\n";
-				ls + "X" + (el->pos.x - zero.x) + "Y" + (el->pos.y - zero.y) + "\r\n";
+				ls + "G0X" + (el->pos.x - zero.x) + "Y" + (el->pos.y - zero.y) + "\r\n";
+				ls + "G0Z0" + "F" + pspeed + "\r\n";
 			}
 
-			if (el->type == GiPathTypeDrill) {
+			if (el->type == GiLayerCmdDrill) {
 				float depth = 0;
 				while (depth < el->depth) {
 					float d = min(el->depth, depth + tool.depth);
 					
-					ls + "G1Z" + (float(depth - 2) * -1) + "F60" + "\r\n";
-					ls + "G1Z" + (d * -1) + "F60" + "\r\n";
+					ls + "G1Z" + (float(depth - 2) * -1) + "F" + pspeed + "\r\n";
+					ls + "G1Z" + (d * -1) + "F" + pspeed + "\r\n";
 
 					depth = d;
 				}				
 			}
 		}
 
-		ls + "M5" + "\r\n";
+		ls + "G0 Z5" + "\r\n";
+		ls + "M5" + "\r\n";		
 		ls + "M30" + "\r\n";
 
 		return ls;

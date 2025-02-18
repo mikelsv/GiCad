@@ -1,4 +1,4 @@
-#define GIGUI_GLOBAL_SCALE 2.4
+#define GIGUI_GLOBAL_SCALE 2.3
 
 #define GI_LAYER_CMD_G75 1
 #define GI_LAYER_CMD_G03 2
@@ -9,6 +9,10 @@
 #define GI_GL_PATH	2000
 
 bool _error_gerber_reader_align = 0;
+
+// Debug
+const bool _debug_objects_selection_print = 0;
+int _debug_objects_selection_call = 0;
 
 enum GiCadZeroPoint {
 	GiCadZeroPointNull,
@@ -179,6 +183,11 @@ public:
 		data[size] = '\0';
 	}
 
+	void CheckStrSize() {
+		data[maxsize] = 0;
+		size = strlen(data);
+	}
+
 	// Data
 	VString GetStr() {
 		return VString(data, size);
@@ -241,6 +250,10 @@ public:
 		return (void*)(intptr_t)texture;
 	}
 
+	operator ImTextureID() {
+		return texture;
+	}
+
 };
 
 class GiImages {
@@ -274,6 +287,7 @@ public:
 	MString name;
 	float diameter, depth;
 	int speed;
+	float feed, plunge;
 
 	// Gui
 	ImGuiCharIdExt<11> gui_id;
@@ -438,6 +452,8 @@ public:
 		tool->diameter = json["tool.dia"].tod();
 		tool->depth = json["tool.depth"].tod();
 		tool->speed = json["tool.speed"].toi();
+		tool->feed = json["tool.feed"].tod();
+		tool->plunge = json["tool.plunge"].tod();
 
 		// Gui
 		tool->UpdateGui();
@@ -460,6 +476,8 @@ public:
 		json("dia", dtos(tool->diameter));
 		json("depth", dtos(tool->depth));
 		json("speed", itos(tool->speed));
+		json("feed", dtos(tool->feed));
+		json("plunge", dtos(tool->plunge));
 
 		json.Save(tool->GetToolFile());
 	}
@@ -618,6 +636,7 @@ public:
 		ImGui::Text("Name: ");
 		ImGui::SameLine();
 		if (ImGui::InputText("##Name", tool->gui_name, tool->gui_name.GetMaxSize()))  {
+			tool->gui_name.CheckStrSize();
 			tool->mod_name = 1;
 		}
 
@@ -631,10 +650,20 @@ public:
 		ImGui::SameLine();
 		if (ImGui::InputFloat("##Depth", &tool->depth)) {}
 
+		ImGui::Separator();
+
 		// Speed
 		ImGui::Text("Spindle Speed: ");
 		ImGui::SameLine();
 		if (ImGui::InputInt("##Speed", &tool->speed)) {}
+
+		ImGui::Text("Feed: ");
+		ImGui::SameLine();
+		if (ImGui::InputFloat("##Feed", &tool->feed)) {}
+
+		ImGui::Text("Plunge: ");
+		ImGui::SameLine();
+		if (ImGui::InputFloat("##Plunge", &tool->plunge)) {}
 
 		// Buttons //
 		ImGui::Separator();
@@ -760,3 +789,86 @@ public:
 KiVec4 GiColorMix(KiVec4 color, KiVec4 scolor, int mix) {
 	return color * (100 - mix) / 100 + scolor * mix / 100;
 }
+
+// GiPopUp
+class GiPopUpEl {
+public:
+	int id;
+	MString text;
+	ImGuiCharIdExt<11> chr_id;
+	float stime, etime;
+	KiVec2 size;
+};
+
+class GiPopUp {
+	OList<GiPopUpEl> els;
+	int ids;
+	float time;
+	//KiVec2 res;
+	KiVec3 border;
+	int acount;
+	
+
+public:
+	GiPopUp() {
+		ids = 0;
+		time = 0;
+		border = KiVec3(10, 35, 20);
+	}
+
+	void Insert(VString text, int life_time = 30) {
+		GiPopUpEl *el = els.NewE();
+		el->text = text;
+		el->stime = time;
+		el->etime = time + life_time;
+		el->chr_id.AddStr("GiPopUp");
+		el->chr_id.AddInt(++ids);
+
+		return;
+	}
+
+	void Draw(float t) {
+		time = t;
+
+		// Count
+		GiPopUpEl *el = 0, *del = 0;
+		int count = acount;
+		acount = 0;
+
+		while (el = els.Next(el)) {
+			if (el->stime > time)
+				continue;
+
+			int pos_x = ImGui::GetIO().DisplaySize.x - border.x - el->size.x;
+			int pos_y = ImGui::GetIO().DisplaySize.y - border.y - (el->size.y + border.z) * count;
+
+			ImGui::SetNextWindowPos(ImVec2(pos_x, pos_y));
+			
+			ImGui::Begin(el->chr_id, NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize);
+			ImGui::SetWindowFontScale(GIGUI_GLOBAL_SCALE);
+			ImGui::Text(el->text);
+
+			if (ImGui::IsItemClicked()) {
+				el->etime = 0;
+				acount--;
+			}
+				
+			ImVec2 size = ImGui::GetWindowSize();
+			el->size.x = size.x;
+			el->size.y = size.y;
+
+			ImGui::End();
+
+			acount++;
+			count--;
+
+			if (el->etime < time) {
+				del = el;
+			}
+		}
+
+		if (del)
+			els.Free(del);
+	}
+
+} GiWndPopUp;

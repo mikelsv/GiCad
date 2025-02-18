@@ -3,15 +3,17 @@ enum GiLayerAppType {
 	GiLayerAppTypeCircle
 };
 
+int GiProjectLayerNew();
 bool GiProjectLayerAddAppCircle(int layer_id, int id, float dia);
 bool GiProjectLayerCmdHole(int layer_id, int app_id, double x, double y);
 bool GiProjectLayerCmdObject(int layer_id, int app_id);
 bool GiProjectLayerCmdMove(int layer_id, int app_id, double x, double y, int cmd_d);
-bool GiProjectLayerCmdRot(int layer_id, int app_id, double x, double y, double cx, double cy, int opt);
+bool GiProjectLayerCmdRot(int layer_id, int app_id, KiVec2 pos, KiVec2 center, int opt);
 
 //bool GiProjectLayerAddPPoi(int layer_id, double x, double y);
 bool GiProjectLayerSetColor(int layer_id, KiVec4 color);
 bool GiProjectLayerClean(int layer_id);
+void GiProjectSetPaint();
 
 
 
@@ -73,7 +75,7 @@ public:
 		return is_open = is_active = 1;
 	}
 
-	virtual bool Read(VString data){ 
+	virtual bool Read(VString data){
 		return 0;
 	}
 
@@ -116,6 +118,8 @@ public:
 
 	// Set
 	void SetColor(const KiVec4 &c) {
+		if (!this)
+			return;
 		color = c;
 	}
 
@@ -158,6 +162,7 @@ public:
 
 	friend class GrblFile;
 	friend class DrillFile;
+	friend class LayerTextFile;
 };
 
 
@@ -315,12 +320,12 @@ public:
 						GiProjectLayerCmdMove(layer_id, cmd_d, cmd_x / 1000000., cmd_y / 1000000., cmd_d);
 					else if (cmd_g == 02) {
 						int opt = cmd_g75 ? GI_LAYER_CMD_G75 : 0;
-						GiProjectLayerCmdRot(layer_id, cmd_d, cmd_x / 1000000., cmd_y / 1000000., cmd_i / 1000000., cmd_j / 1000000., opt);
+						GiProjectLayerCmdRot(layer_id, cmd_d, KiVec2(cmd_x / 1000000., cmd_y / 1000000.), KiVec2(cmd_i / 1000000., cmd_j / 1000000.), opt);
 						cmd_g75 = 0;
 					}
 					else if (cmd_g == 03) {
 						int opt = GI_LAYER_CMD_G03 + (cmd_g75 ? GI_LAYER_CMD_G75 : 0);
-						GiProjectLayerCmdRot(layer_id, cmd_d, cmd_x / 1000000., cmd_y / 1000000., cmd_i / 1000000., cmd_j / 1000000., opt);
+						GiProjectLayerCmdRot(layer_id, cmd_d, KiVec2(cmd_x / 1000000., cmd_y / 1000000.), KiVec2(cmd_i / 1000000., cmd_j / 1000000.), opt);
 						cmd_g75 = 0;
 					}
 				}
@@ -667,6 +672,156 @@ public:
 		aps.Clean();
 
 		GiBaseFile::Clean();
+	}
+
+};
+
+// Layer Text format
+/*
+LAYER_TEXT_FORMAT_V1
+; Comment
+LAYER
+; Global move for all X and Y
+GMOVE,X,Y
+CIR,X,Y,Z
+LINE,X,Y,X2,Y2
+; End script ignore next
+END
+*/
+
+class LayerTextFile : public GiBaseFile {
+	int fmt, eof;
+	float gmove_x, gmove_y;
+
+	// Apertures
+	OList<DrillFileAperture> aps;
+public:
+
+	bool ReadFile(VString file) {
+		MString data = LoadFile(file);
+
+		if (Read(data)) {
+			GiProjectSetPaint();
+			return 1;
+		}
+
+		return 0;
+	}
+
+	bool Read(VString data) {
+		fmt = 0;
+		eof = 0;
+		gmove_x = gmove_y = 0;
+
+		aps.Clean();
+
+		while (data) {
+			// read line
+			VString line = PartLine(data, data, "\n");
+
+			// Clean \r
+			if (line && line.endo() == '\r')
+				line.sz--;
+
+			if (!ReadLine(line))
+				return 0;
+
+			if (eof)
+				return 1;
+		}
+
+		return 1;
+	}
+
+	bool ReadLine(VString line) {
+		VString key, val;
+		unsigned char *f = line, *l = line, *t = line.endu(), k;
+
+		VString cmd, res[8];
+		int resc = 8;
+
+		// Ignore comment
+		if (line[0] == ';' || !line)
+			return 1;
+
+		cmd = PartLine(line, line, ",");
+
+		if (cmd == "LAYER_TEXT_FORMAT_V1") {
+			fmt = 1;
+			return 1;
+		}
+
+		if (!fmt)
+			return 0;
+
+		if (cmd == "LAYER") {
+			//layer_id = GiProjectLayerNew();
+			//return 1;
+		}
+
+		//if (!layer_id)
+		//	return 0;
+
+		if (cmd == "GMOVE") {
+			VString x, y;
+
+			x = PartLine(line, line, ",");
+			y = PartLine(line, line, ",");
+
+			gmove_x = x.tod();
+			gmove_y = y.tod();
+
+			return 1;
+		}
+
+		if (cmd == "CIR") {
+			VString x, y, d;		
+
+			x = PartLine(line, line, ",");
+			y = PartLine(line, line, ",");
+			d = PartLine(line, line, ",");
+
+			DrillFileAperture *app = GetAppByDia(d.tod());
+
+			AddLayerHole(app->Id(), x.tod(), y.tod(), 0);
+			return 1;
+		}
+
+		if (cmd == "LINE") {
+			VString x1, y1, x2, y2;
+
+			int resi = PartLines(line, "$f,$f,$f,$f", res, resc);
+			if (resi != 4)
+				return 0;
+
+			GiProjectLayerCmdObject(layer_id, 0);
+			GiProjectLayerCmdMove(layer_id, 0, res[0].tod(), res[1].tod(), 0);
+			GiProjectLayerCmdMove(layer_id, 0, res[2].tod(), res[3].tod(), 0);
+
+			return 1;
+		}
+
+		if (cmd == "END") {
+			eof = 1;
+			return 1;
+		}
+
+		return 0;
+	}
+
+	DrillFileAperture *GetAppByDia(double dia) {
+		DrillFileAperture *app = 0;
+		while(app = aps.Next(app)){
+			if (app->Dia() == dia)
+				return app;
+		}
+
+		app = aps.NewE();
+		app->Set(aps.Size(), dia);
+
+		GiProjectLayerAddAppCircle(layer_id, aps.Size(), dia);
+
+		return app;
 	}
 
 };

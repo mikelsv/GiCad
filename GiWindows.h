@@ -96,9 +96,11 @@ public:
 
 	// GLSL
 	GlslMain glsl_main;
-	//MglMenu glsl_menu;
-	MglPopUp glsl_popup;
+	//MglMenu glsl_menu;	
 	GlslObjects glsl_objects;
+
+	// PopUp
+	//GiPopUp glsl_popup;
 
 	// Timer
 	MTimer ttime;
@@ -127,12 +129,12 @@ public:
 		window = wnd;
 
 		glsl_main.Init(screen);
-		glsl_popup.Init();
+		//glsl_popup.Init();
 		glsl_objects.Init();
 
 		GlslFontTexture.Init();
 		glsl_main.SetFont(GlslFontTexture.GetTexture());
-		glsl_popup.SetFont(GlslFontTexture.GetTexture());
+		//glsl_popup.SetFont(GlslFontTexture.GetTexture());
 
 		glsl_main.UpdateZoom(zoom);
 		glsl_objects.UpdateZoom(zoom);
@@ -148,7 +150,7 @@ public:
 		ttime.Init();
 		stime = ttime.dtime();
 
-		glsl_popup.UpdateTime((ttime.dtime() - stime) / 1000);
+		//glsl_popup.UpdateTime((ttime.dtime() - stime) / 1000);
 	}
 
 	void UpdateFps(){
@@ -171,7 +173,7 @@ public:
 		maximized = m;
 
 		glsl_main.UpdateRes(screen);
-		glsl_popup.UpdateRes(screen);		
+		//glsl_popup.UpdateRes(screen);		
 		glsl_objects.UpdateRes(screen);
 	}
 
@@ -279,7 +281,7 @@ public:
 
 	// Popup
 	void InsertPopUp(VString text, int lifetime = 30){
-		glsl_popup.Insert(text, lifetime);
+		GiWndPopUp.Insert(text, lifetime);
 	}
 
 	// Render
@@ -297,8 +299,12 @@ public:
 
 		//glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 		glsl_objects.Render(wtime);
-		glsl_popup.Render((ttime.dtime() - stime) / 1000);
+		//glsl_popup.Draw((ttime.dtime() - stime) / 1000);
 		//glBindFramebuffer(GL_FRAMEBUFFER, 0);		
+	}
+
+	float GetTime() {
+		return (ttime.dtime() - stime) / 1000;
 	}
 
 	void LoadConfig(){
@@ -406,7 +412,7 @@ static void GiWndMouseClickCallback(GLFWwindow* window, int button, int action, 
 	// ImGui
 	ImGui::GetIO().MouseDown[button] = action;
 
-	if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow))
+	if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow | ImGuiHoveredFlags_ChildWindows))
 		return;
 
 	KiVec2 click = KiVec2(GiCadWindows.mouse[2].cur.x, GiCadWindows.screen.y - GiCadWindows.mouse[2].cur.y);
@@ -426,7 +432,7 @@ static void GiWndMouseClickCallback(GLFWwindow* window, int button, int action, 
 			//GiCadWindows.mouse_down[1] = action;
 			//GiCadWindows.glsl.UpdateMouseSelect(GiCadWindows.mouse[0].cur, );
 
-			GiCadWindows.glsl_popup.OnClick(KiVec2(GiCadWindows.mouse[2].cur.x, GiCadWindows.screen.y - GiCadWindows.mouse[2].cur.y));
+			//GiCadWindows.glsl_popup.OnClick(KiVec2(GiCadWindows.mouse[2].cur.x, GiCadWindows.screen.y - GiCadWindows.mouse[2].cur.y));
 
 			if (GiCadWindows.mouse[0].IsClick() && !action)
 				GiProject.OnMouseClick(ctrl_on);
@@ -438,6 +444,7 @@ static void GiWndMouseClickCallback(GLFWwindow* window, int button, int action, 
 		// Right button
 		case GLFW_MOUSE_BUTTON_2:
 			GiCadWindows.mouse[GLFW_MOUSE_BUTTON_2].Click(action);
+			GiProject.OnMouseRightClick();
 		break;
 
 		case GLFW_MOUSE_BUTTON_3:
@@ -458,7 +465,8 @@ static void GiWndMouseMotionCallback(GLFWwindow* window, double x, double y){
 	//MaticalsOpenGl.SetMouse(KiInt2(x, y));
 
 	// Left button
-	GiCadWindows.mouse[0].cur = KiVec2(x, GiCadWindows.screen.y - y) / GISCREENZOOM;
+	//GiCadWindows.mouse[0].cur = KiVec2(x, GiCadWindows.screen.y - y) / GISCREENZOOM;
+	GiCadWindows.mouse[0].Move(KiVec2(x, GiCadWindows.screen.y - y) / GISCREENZOOM);
 	GiCadWindows.glsl_main.UpdateMouseSelect(GiCadWindows.mouse[0].cur, GiCadWindows.mouse[0].hold, GiCadWindows.mouse[0].down);
 
 	//if (GiCadWindows.mouse[0].down) {
@@ -566,10 +574,8 @@ void GiWndMouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset
 void GiWndDropMessage(VString path, int ok){
 	ILink link(path);
 
-	if(path.size() > 20){
-		//path = link.file;
-		path = path.str(-20);
-	}
+	if(path.size() > 50)
+		path = path.str(-50);
 
 	if(ok)
 		GiCadWindows.InsertPopUp(LString() + "Loaded success: " + path);
@@ -582,14 +588,7 @@ void GiWndDrop(GLFWwindow* window, int count, const char** paths){
 		ILink link(paths[i]);
 		VString file(paths[i]);
 
-		if(file.str(-3) == "gbr")
-			GiWndDropMessage(paths[i], GiProject.AddGbrFile(paths[i]));
-
-		else if(file.str(-3) == "drl")
-			GiWndDropMessage(paths[i], GiProject.AddDrlFile(paths[i]));
-
-		else
-			GiWndDropMessage(paths[i], 0);
+		GiProject.AddFileCall(file);
 	}
 
 	GiProject.OnDrop();
@@ -648,6 +647,19 @@ void GuiMenuRender() {
 			if (ImGui::MenuItem("Save project as", "Ctrl+Shift+S")) {}
 			ImGui::SameLine();
 			ImGui::Image(GiImages.save_project2, isize);
+
+			// Add file
+			if (ImGui::MenuItem("Add file", "Ctrl+Shift+F"))
+				GiProject.MenuAddFile();
+			ImGui::SameLine();
+			ImGui::Image(GiImages.open_project, isize);
+
+			// Add script
+			if (ImGui::MenuItem("Add script", ""))
+				GiProject.MenuAddScript();
+			ImGui::SameLine();
+			ImGui::Image(GiImages.open_project, isize);
+
 
 			// Exit
 			if (ImGui::MenuItem("Exit", ""))
@@ -783,6 +795,8 @@ void GuiLayersRender() {
 void GuiRender() {
 	GuiMenuRender();
 	GuiLayersRender();
+
+	GiWndPopUp.Draw(GiCadWindows.GetTime());
 }
 
 void GiWindowsResetView100p() {

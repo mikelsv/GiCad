@@ -4,6 +4,7 @@
 void GiWindowsUpdateTitle();
 void GiWindowsResetView100p();
 void GiWindowsInsertPopUp(VString text);
+void GiWndDropMessage(VString path, int ok);
 
 // Project type
 enum GiProjectType {
@@ -27,11 +28,12 @@ class GiProject{
 	// Layers & files
 	OList<GrblFile> grbs;
 	OList<DrillFile> drls;
+	OList<LayerTextFile> ltxs;
 	OList<GiLayer> lays;
 	OList<GiPath> paths;
 
 	// Show
-	bool show_grbs, show_drls, show_lays, show_prog;
+	bool show_grbs, show_drls, show_ltxs, show_lays, show_prog;
 	int tree_click, tree_selected, tree_type;
 
 	// Opt
@@ -48,6 +50,8 @@ class GiProject{
 
 	// Path Show Options
 	int opt_path_show;
+
+	GlslObjectsHead *show_object_right_menu;
 
 	// Drill
 	GiToolsEl tool;
@@ -69,6 +73,7 @@ public:
 		prog_drill_depth = 1;
 
 		opt_path_show = 0;
+		show_object_right_menu = 0;
 	}
 
 	VString GetProjectName(){
@@ -115,6 +120,40 @@ public:
 
 		LoadProject(selection);
 	}
+
+	void MenuAddFile() {
+		char const *lFilterPatterns[] = { "*.gbr", "*.drl, *.txt"};
+
+		char const *selection = tinyfd_openFileDialog( // there is also a wchar_t version
+			"Add file(s)", // title
+			0, // optional initial directory
+			2, // number of filter patterns
+			lFilterPatterns, // char const * lFilterPatterns[2] = { "*.txt", "*.jpg" };
+			NULL, // optional filter description
+			1 // forbid multiple selections
+		);
+
+		VString files = selection, file;
+
+		while (file = PartLine(files, files, "\n"))
+			AddFileCall(file);		
+
+		return;
+	}
+
+	void AddFileCall(VString file) {
+		ILink link(file);
+		if (file.str(-3) == "gbr")
+			GiWndDropMessage(file, AddGbrFile(file));
+		else if (file.str(-3) == "drl")
+			GiWndDropMessage(file, AddDrlFile(file));
+		else if (file.str(-3) == "txt")
+			GiWndDropMessage(file, AddLtxFile(file));
+		else
+			GiWndDropMessage(file, 0);
+	}
+
+	void MenuAddScript() {}
 
 	void LoadProject(VString file){
 		ILink link(file);
@@ -271,7 +310,6 @@ public:
 
 		// Write layers data
 		while (el = lays.Next(el)) {
-
 			GiLayerCmd *cel = 0, *cel_pos = 0, *cel_cir = 0;
 
 			if (!el->GetActive())
@@ -350,10 +388,12 @@ public:
 			if (!pel->GetActive())
 				continue;
 
-			head.type = GI_GL_PATH;
-			GlslObjectsBuffer.AddHead(head, hext);
+			pel->cmds.Paint(pel->GetColor(), 0);
 
-			pel->PaintGetData();
+			//head.type = GI_GL_PATH;
+			//GlslObjectsBuffer.AddHead(head, hext);
+
+			//pel->PaintGetData();
 		}
 
 		is_paint = 0;
@@ -480,6 +520,47 @@ public:
 		DelLayer(id);
 	}
 
+	// Ltx
+	bool AddLtxFile(VString file) {
+		LayerTextFile *el = GetLtxByPath(file);
+		if (!el) {
+			el = ltxs.NewE();
+			el->SetLayerId(NewLayer(el));
+			el->UpdateGui();
+		}
+
+		show_ltxs = 1;
+
+		SetPaint();
+		return el->Open(file);
+	}
+
+	LayerTextFile *GetLtx(int id) {
+		LayerTextFile *el = 0;
+		while (el = ltxs.Next(el)) {
+			if (el->GetLayerId() == id)
+				return el;
+		}
+
+		return 0;
+	}
+
+	LayerTextFile *GetLtxByPath(VString file) {
+		LayerTextFile *el = 0;
+		while (el = ltxs.Next(el)) {
+			if (file == el->GetPath())
+				return el;
+		}
+
+		return 0;
+	}
+
+	void DelLtx(int id) {
+		LayerTextFile *el = GetLtx(id);
+		ltxs.Free(el);
+		DelLayer(id);
+	}
+
 	// Layer
 	int NewLayer(GiBaseFile* file, int id = 0) {
 		GiLayer* el = lays.NewE();
@@ -530,6 +611,67 @@ public:
 		return rect;
 	}
 
+	// Objects
+	int MakeObjects(GiLayerObjects type) {
+		if (!show_object_right_menu)
+			return 0;
+
+		GiLayer *el = lays.NewE();
+		el->Clean();
+
+		el->SetId(++layer_id);
+
+		KiVec4 rect = GetObjectRect(show_object_right_menu);
+		KiVec2 c = rect.GetCenter();
+
+		switch (type) {
+		case GiLayerObjectCircle:
+			el->SetName("Circle");
+			el->AddCmdObject(0);
+			el->AddCmdMove(0, c.x, rect.w);
+			el->AddCmdRot(0, KiVec2(c.x, rect.w), c, GI_LAYER_CMD_G75);
+			break;
+
+		case GiLayerObjectCircleFill:
+			//el->AddCmdHole();
+			break;		
+
+		case GiLayerObjectRect:
+			el->AddCmdObject(0);
+			el->AddCmdMove(0, rect.x, rect.y);
+			el->AddCmdMove(0, rect.z, rect.y);
+			el->AddCmdMove(0, rect.z, rect.w);
+			el->AddCmdMove(0, rect.x, rect.w);		
+			break;
+
+		case GiLayerObjectRectFill:
+			break;
+		}
+
+		show_object_right_menu = 0;
+
+		return layer_id;
+	}
+
+	KiVec4 GetObjectRect(GlslObjectsHead *head) {
+		if (!head || !head->size)
+			return KiVec4();
+
+		GlslObjectsData *data = GlslObjectsBuffer.GetData() + head->pos, *data_end = data + head->size;
+
+		KiVec4 rect = KiVec4(data->x, data->y, data->x, data->y);
+		data++;
+
+		for (data; data < data_end; data++) {
+			rect.x = min(rect.x, data->x);
+			rect.y = min(rect.y, data->y);
+			rect.z = max(rect.x, data->x);
+			rect.w = max(rect.y, data->y);
+		}
+
+		return rect;
+	}
+
 	// Paths
 	GiPath* GetPath(int id) {
 		GiPath* el = 0;
@@ -565,6 +707,7 @@ public:
 		GuiTreeRender();
 		GuiOptionRender();
 		GuiProg();
+		GuiObjectsRightMenu();
 	}
 
 	void GuiTreeRender(){
@@ -649,10 +792,48 @@ public:
 			}
 
 			ImGui::TreePop();
-		}		
+		}
 
-		// Layers
-		if (ImGui::TreeNodeEx("Layers", ImGuiTreeNodeFlags_DefaultOpen)) {
+		// Lxt
+		if (ImGui::TreeNodeEx("Lxt format", ImGuiTreeNodeFlags_DefaultOpen)) {
+			LayerTextFile *el = 0;
+			while (el = ltxs.Next(el)) {
+				VString path = el->GetFile();
+				color = el->GetColor();
+
+				// CheckBox
+				isChecked = el->GetActive();
+				if (ImGui::Checkbox(el->GuiNameCheck(), &isChecked)) {
+					el->SetActive(isChecked);
+					if (isChecked)
+						el->SetUnselect(1);
+					SetPaint();
+				}
+
+				// Color
+				ImGui::SameLine();
+				if (ImGui::ColorEdit4(el->GuiNameColor(), &color.x, ImGuiColorEditFlags_NoInputs)) {
+					el->SetColor(color);
+					GiProjectLayerSetColor(el->GetLayerId(), color);
+				}
+
+				// Text
+				ImGui::SameLine();
+				ImGui::TextUnformatted(path, path.end());
+
+				// Right click
+				if (ImGui::IsItemClicked(1)) {
+					tree_selected = el->GetLayerId();
+					tree_type = GiProjectTypeDrill;
+					tree_click = 1;
+				}
+			}
+
+			ImGui::TreePop();
+		}
+
+		// Objects
+		if (ImGui::TreeNodeEx("Objects", ImGuiTreeNodeFlags_DefaultOpen)) {
 			GiLayer* el = 0;
 			while (el = lays.Next(el)) {
 				//VString path = el->GetPath();
@@ -737,6 +918,7 @@ public:
 				DelGrbl(tree_selected);
 				DelDrill(tree_selected);
 				DelPath(tree_selected);
+				DelLtx(tree_selected);
 			}
 
 			//ImGui::Separator();
@@ -807,10 +989,13 @@ public:
 		ImGui::Text("File:");
 		ImGui::SameLine();
 
+		// File
 		DrillFile* el = 0;
+		LayerTextFile *lel = 0;
 		int count = 0;
 
 		if (ImGui::BeginCombo("##Combo", prog_drill_file_name)) {
+			// Drill file
 			while (el = drls.Next(el)) {
 				//for (int i = 0; i < IM_ARRAYSIZE(items); i++) {
 				bool isSelected = (prog_drill_file_id == el->GetLayerId());
@@ -823,6 +1008,16 @@ public:
 				//	ImGui::SetItemDefaultFocus();
 				//}
 			//}					
+			}
+
+			// Ltx
+			while (lel = ltxs.Next(lel)) {
+				bool isSelected = (prog_drill_file_id == lel->GetLayerId());
+				if (ImGui::Selectable(lel->GetFile(), isSelected)) {
+					prog_drill_file_id = lel->GetLayerId();
+					prog_drill_file_name = lel->GetFile();
+					prog_drill_check = GetLayerById(prog_drill_file_id)->AppGetCheckAll();
+				}			
 			}
 
 			ImGui::EndCombo();
@@ -880,8 +1075,12 @@ public:
 		}
 
 		// Buttons
-		if (ImGui::Button("Create") && tool.id != 0) {
-			CreateDrillPath();
+		if (ImGui::Button("Create")) {
+			if(tool.id)
+				CreateDrillPath();
+			else
+				GiWindowsInsertPopUp(LString() + "Select Tool!");
+
 		}
 		ImGui::SameLine();
 
@@ -897,93 +1096,15 @@ public:
 
 		ImGui::Begin("Laser", &show_window, 0);
 		ImGui::SetWindowFontScale(GIGUI_GLOBAL_SCALE);
-		ImGui::SameLine();
-
-		ImGui::Text("Depth:");
-		ImGui::SameLine();
-
-		float floatValue = 1.0f;
-		if (ImGui::InputFloat("##Depth", &prog_drill_depth)) {}
-
-		// Combo
-		ImGui::Text("File:");
-		ImGui::SameLine();
-
-		DrillFile *el = 0;
-		int count = 0;
-
-		if (ImGui::BeginCombo("##Combo", prog_drill_file_name)) {
-			while (el = drls.Next(el)) {
-				//for (int i = 0; i < IM_ARRAYSIZE(items); i++) {
-				bool isSelected = (prog_drill_file_id == el->GetLayerId());
-				if (ImGui::Selectable(el->GetFile(), isSelected)) {
-					prog_drill_file_id = el->GetLayerId();
-					prog_drill_file_name = el->GetFile();
-					prog_drill_check = GetLayerById(prog_drill_file_id)->AppGetCheckAll();
-				}
-				//if (isSelected) {
-				//	ImGui::SetItemDefaultFocus();
-				//}
-			//}					
-			}
-
-			ImGui::EndCombo();
-		}
 
 		// Tool
 		if (ImGui::Button(tool.id ? tool.gui_name.GetStr() : VString("Select tool"))) {
 			GiTools.SelectTool();
 		}
 
-		// Table
-		if (ImGui::BeginTable("Table", 2)) {
-			// Head
-			ImGui::TableNextColumn();
-			if (ImGui::Checkbox("##Checkbox", &prog_drill_check)) {
-				GetLayerById(prog_drill_file_id)->AppSetCheckAll(prog_drill_check);
-			}
-
-			ImGui::TableNextColumn();
-			ImGui::Text("Size");
-
-			//ImGui::TableNextColumn();
-			//ImGui::Text("-");
-
-			// Data
-			auto el = GetLayerById(prog_drill_file_id);
-			GiLayerAppEl *app = 0;
-
-			if (el)
-				while (app = el->NextApp(app)) {
-					ImGui::TableNextColumn();
-					if (ImGui::Checkbox(app->c_check, &app->checked)) {
-						prog_drill_check = GetLayerById(prog_drill_file_id)->AppGetCheckAll();
-					}
-					ImGui::SameLine();
-
-					if (ImGui::Selectable(app->c_type, app->selected)) {
-						el->AppSetSelectAll(0);
-						app->selected = 1;
-						SetPaint();
-					}
-
-					ImGui::TableNextColumn();
-					if (ImGui::Selectable(app->c_dia, app->selected)) {
-						el->AppSetSelectAll(0);
-						app->selected = 1;
-						SetPaint();
-					}
-
-					//ImGui::TableNextColumn();
-					//ImGui::Text("Tool");
-				}
-
-			ImGui::EndTable();
-		}
-
 		// Buttons
 		if (ImGui::Button("Create") && tool.id != 0) {
-			CreateDrillPath();
+			CreateLaserPath();
 		}
 		ImGui::SameLine();
 
@@ -992,6 +1113,26 @@ public:
 		}
 
 		ImGui::End();
+	}
+
+	void GuiObjectsRightMenu() {
+		if (show_object_right_menu)
+			ImGui::OpenPopup("ObjectsRightMenu");
+
+		if (ImGui::BeginPopupContextItem("ObjectsRightMenu")) {
+			if (ImGui::BeginMenu("Make object")) {
+				if (ImGui::MenuItem("Circle"))
+					MakeObjects(GiLayerObjectCircle);
+				if (ImGui::MenuItem("Circle Fill"))
+					MakeObjects(GiLayerObjectCircleFill);
+				if (ImGui::MenuItem("Rectangle"))
+					MakeObjects(GiLayerObjectRect);
+				if (ImGui::MenuItem("Rectangle Fill"))
+					MakeObjects(GiLayerObjectRectFill);
+				ImGui::EndMenu();
+			}
+			ImGui::EndPopup();
+		}		
 	}
 
 	// Mouse
@@ -1003,8 +1144,9 @@ public:
 		GlslObjectsData *data = GlslObjectsBuffer.GetData();
 		GlslObjectsColor *color = GlslObjectsBuffer.GetColors();
 		KiVec4 mpos(mouse.x, mouse.y, mouse2.x, mouse2.y);
+		bool selected = 0;
 		float line = .5;
-
+		
 		while (head < head_end) {
 			int cross = 0, pos = head->pos, to = pos + head->size;
 			//bool inside = false;
@@ -1104,15 +1246,17 @@ public:
 			// Update color
 			if (select) {
 				OnMouseMoveActive(head, area);
+				selected = 1;
 
 				if(!area)
 					return;
 			}
 
-			head++;			
+			head++;
 		}
 
-		OnMouseMoveActive(0, area);
+		if(!selected)
+			OnMouseMoveActive(0, area);
 
 		return;
 	}
@@ -1122,15 +1266,26 @@ public:
 
 		int mix = (hext->cmd->selected || hext->cmd->aselect) * 50 + over * 50;
 
-		//SString ss;
-		//ss.Format("SetColor %d %d %d \r\n", mix, hext->cmd->selected, hext->cmd->aselect);
-		//print(ss);
+		if (_debug_objects_selection_print) {
+			SString ss;
+			ss.Format("SetColor %d %d %d %d \r\n", mix, over, hext->cmd->selected, hext->cmd->aselect);
+			print(ss);
+
+			_debug_objects_selection_call = 0;
+		}
 
 		GlslObjectsBuffer.SetColor(head, GiColorMix(hext->color, hext->scolor, mix));
 	}
 
 	void OnMouseMoveActive(GlslObjectsHead *head, bool area) {
 		GlslObjectsHeadExt *hext;
+		
+		if (_debug_objects_selection_print && head != GlslObjectsBuffer.GetMouseOver()) {
+			SString ss;
+			ss.Format("OnMouseMoveActive %h %h ", (int)head, (int)GlslObjectsBuffer.GetMouseOver());
+			print(ss);
+			_debug_objects_selection_call++;
+		}
 
 		// No action
 		if (GlslObjectsBuffer.GetMouseOver() == head)
@@ -1156,6 +1311,11 @@ public:
 	}
 
 	void OnMouseMoveActiveArea(GlslObjectsHead *head, GlslObjectsHeadExt *hext, bool state) {
+		if (_debug_objects_selection_print) {
+			print("OnMouseMoveActiveArea ");
+			_debug_objects_selection_call++;
+		}
+
 		hext->cmd->aselect = state;
 		//GlslObjectsBuffer.SetColor(head, ColorMix(hext->color, hext->scolor, state * 50));
 		OnMouseUpdateColor(head, hext, GlslObjectsBuffer.GetMouseOver() == head);
@@ -1163,6 +1323,11 @@ public:
 
 	void OnMouseClick(bool ctrl_on) {
 		GlslObjectsHeadExt *hext;
+
+		show_object_right_menu = 0;
+
+		if(_debug_objects_selection_print)
+			print("OnMouseClick ");
 
 		if (!ctrl_on)
 			SelectAll(0);
@@ -1177,25 +1342,42 @@ public:
 		return;
 	}
 
+	void OnMouseRightClick() {
+		if (GlslObjectsBuffer.GetMouseOver()) {
+			show_object_right_menu = GlslObjectsBuffer.GetMouseOver();
+		}
+	}
+
 	void OnMouseAreaClick(bool state, bool ctrl_on) {
+		// Layer
 		GiLayer *el;
 
 		// Objects
 		GlslObjectsHead *head;// = GlslObjectsBuffer.GetHead(), *head_end = head + GlslObjectsBuffer.GetHeadCount();
 		GlslObjectsHeadExt *hext = GlslObjectsBuffer.GetHeadExt(), *hext_end = hext + GlslObjectsBuffer.GetHeadCount();
 
+		if (_debug_objects_selection_print) {
+			print("OnMouseAreaClick ");
+			_debug_objects_selection_call++;
+		}
+
 		for (hext; hext < hext_end; hext++) {
 			head = GlslObjectsBuffer.GetHeadByExt(hext);
 
 			if (hext->cmd) {
 				if (state) {
+					// Modify
+					bool mod = hext->cmd->selected != hext->cmd->aselect;
+
 					// Control 
 					if(!ctrl_on)
 						hext->cmd->selected = hext->cmd->aselect;
 					else
 						hext->cmd->selected |= hext->cmd->aselect;
 					hext->cmd->aselect = 0;
-					OnMouseUpdateColor(head, hext, GlslObjectsBuffer.GetMouseOver() == head);
+					
+					if(mod)
+						OnMouseUpdateColor(head, hext, GlslObjectsBuffer.GetMouseOver() == head);
 				}
 				else {
 					//hext->cmd->selected = hext->cmd->aselect;
@@ -1210,6 +1392,9 @@ public:
 	void SelectAll(bool val) {
 		GlslObjectsHead *head;// = GlslObjectsBuffer.GetHead(), *head_end = head + GlslObjectsBuffer.GetHeadCount();
 		GlslObjectsHeadExt *hext = GlslObjectsBuffer.GetHeadExt(), *hext_end = hext + GlslObjectsBuffer.GetHeadCount();
+
+		if (_debug_objects_selection_print)
+			print("SelectAll ");
 
 		for (hext; hext < hext_end; hext++) {
 			if (hext->cmd)
@@ -1248,7 +1433,7 @@ public:
 		// -> Add
 		while (el = lel->cmds.cmds.Next(el)) {
 			//if (!lel->AppGetEnable(el->app_id))
-			if (!el->app->GetEnable())
+			if (!el->app || !el->app->GetEnable())
 				continue;
 			sort.Add(el->pos, el);
 		}
@@ -1272,6 +1457,73 @@ public:
 		return;
 	}
 
+	void CreateLaserPath() {
+		GiLayer *lel = 0;
+		GiLayerCmdEl *el = 0;
+		bool selected = 0;
+		bool error_unk = 0;
+
+		// New path
+		GiPath *pel = paths.NewE();
+		pel->Init(++layer_id);
+
+		// Tool
+		pel->SetTool(tool, 0);
+
+		// Layers
+		while (lel = lays.Next(lel)) {
+			if (!lel->GetActive())
+				continue;
+
+			while (el = lel->cmds.cmds.Next(el)) {
+				//if (!el->selected)
+				//	continue;
+
+				switch (el->type) {
+				case GiLayerCmdObject:
+					if (el->selected) {
+						pel->AddObject();
+						selected = 1;
+					}
+					else
+						selected = 0;
+					break;
+
+				case GiLayerCmdHole:
+					if(el->selected)
+						pel->AddCircle(el->app, el->pos);
+					break;
+
+				case GiLayerCmdMove:
+					if (selected)
+						pel->AddMove(el->pos);
+					break;
+
+				case GiLayerCmdCir:
+					if (selected)
+						pel->AddCir(el->pos);
+					break;
+
+				case GiLayerCmdRot:
+					if (selected)
+						pel->AddRot(el->pos, el->opt);
+					break;
+
+				default:
+					error_unk = 1;
+				}
+			}
+		}
+
+		if (error_unk)
+			GiWndPopUp.Insert(LString() + "CreateDrillPath Cmd Error: unknown type.");
+			
+
+		SetPaint();
+
+		return;
+	}
+
 	// ~
 	void Clean(){		
 		layer_id = 0;
@@ -1279,6 +1531,9 @@ public:
 
 		name.Clean();
 		path.Clean();
+		grbs.Clean();
+		drls.Clean();
+		ltxs.Clean();
 		lays.Clean();
 
 		show_grbs = show_drls = show_lays = show_prog = 0;
@@ -1291,6 +1546,13 @@ public:
 	}
 } GiProject;
 
+int GiProjectLayerNew() {
+	int layer_id = GiProject.NewLayer(0);
+	if (!layer_id)
+		return 0;
+
+	return layer_id;
+}
 
 bool GiProjectLayerAddAppCircle(int layer_id, int id, float dia){
 	GiLayer *el = GiProject.GetLayerById(layer_id);
@@ -1331,12 +1593,12 @@ bool GiProjectLayerCmdMove(int layer_id, int app_id, double x, double y, int cmd
 	return 1;
 }
 
-bool GiProjectLayerCmdRot(int layer_id, int app_id, double x, double y, double cx, double cy, int opt) {
+bool GiProjectLayerCmdRot(int layer_id, int app_id, KiVec2 pos, KiVec2 center, int opt) {
 	GiLayer* el = GiProject.GetLayerById(layer_id);
 	if (!el)
 		return 0;
 
-	el->AddCmdRot(app_id, x, y, cx, cy, opt);
+	el->AddCmdRot(app_id, pos, center, opt);
 	return 1;
 }
 
@@ -1361,4 +1623,8 @@ bool GiProjectLayerClean(int layer_id){
 
 void GiProjectSelectedTool(GiToolsEl *tool) {
 	GiProject.SelectedTool(tool);
+}
+
+void GiProjectSetPaint() {
+	GiProject.SetPaint();
 }

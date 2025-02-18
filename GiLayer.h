@@ -23,6 +23,13 @@ public:
 };
 */
 
+enum GiLayerObjects {
+	GiLayerObjectCircle,
+	GiLayerObjectCircleFill, 
+	GiLayerObjectRect,
+	GiLayerObjectRectFill
+};
+
 // AppType
 // Circle: pos(d.x, d.y), dia(d.z);
 // Rectabgle: pos1(d.x, d.y), pos2(d.z, d.w)
@@ -87,6 +94,7 @@ public:
 
 	GiLayerCmdEl() {
 		selected = 0;
+		aselect = 0;
 	}
 
 	KiVec4 GetRect() {
@@ -120,30 +128,63 @@ public:
 		el->pos.y = y;
 	}
 
-	void AddCmdMove(KiVec2 pos, GiLayerAppEl *app = 0) {
+	void AddHoleToCircle(KiVec2 pos, float dia) {
+		KiVec2 poi;
+		int count = PI * dia / (PI * 15 / 180);
+		if (count % 2 != 0)
+			count++;
+
+		AddObject(0);
+
+		for (int i = 0; i < count; i++) {
+			float angle = i * 2 * PI / count;
+			poi.x = pos.x + (cos(angle) * dia / 2);
+			poi.y = pos.y + (sin(angle) * dia / 2);
+
+			AddCmdMove(0, poi);
+		}
+	}
+
+	void AddCmdMove(GiLayerAppEl *app, KiVec2 pos) {
 		GiLayerCmdEl *el = cmds.NewE();
 		el->type = GiLayerCmdMove;
 		el->app = app;
 		el->pos = pos;
 	}
 
-	void AddCmdCir(GiLayerAppEl *app, double x, double y) {
+	void AddCmdCir(GiLayerAppEl *app, KiVec2 pos) {
 		GiLayerCmdEl *el = cmds.NewE();
 		el->type = GiLayerCmdCir;
 		el->app = app;
-		el->pos.x = x;
-		el->pos.y = y;
+		el->pos = pos;
 	}
 
-	void AddCmdRot(GiLayerAppEl *app, double x, double y, double cx, double cy, int opt) {
-		AddCmdCir(app, cx, cy);
+	void AddCmdRotOnly(GiLayerAppEl *app, KiVec2 pos, int opt) {
+		GiLayerCmdEl *el = cmds.NewE();
+		el->type = GiLayerCmdRot;
+		el->app = app;
+		el->pos = pos;
+		el->opt = opt;
+	}
+
+	void AddCmdRot(GiLayerAppEl *app, KiVec2 pos, KiVec2 center, int opt) {
+		AddCmdCir(app, center);
 
 		GiLayerCmdEl *el = cmds.NewE();
 		el->type = GiLayerCmdRot;
 		el->app = app;
-		el->pos.x = x;
-		el->pos.y = y;
+		el->pos = pos;
 		el->opt = opt;
+	}
+
+	void AddCmdCircle(GiLayerAppEl *app, KiVec2 pos) {
+		KiVec2 p;
+		p.x = pos.x + (cos(0) * app->dia / 2);
+		p.y = pos.y + (sin(0) * app->dia / 2);
+		
+		AddObject(app);
+		AddCmdMove(app, p);
+		AddCmdRot(app, p, pos - p, GI_LAYER_CMD_G75);
 	}
 
 	void AddCmdDrill(KiVec2 pos, float depth) {
@@ -196,22 +237,22 @@ public:
 		GlslObjectsData data;
 		GlslObjectsColor color;
 
+		// Color
+		KiVec4 col;
+		hext.color = bcol;
+		//hext.acolor = bcol + KiVec4(.25, .25, .25, 0);
+		hext.scolor = bcol + KiVec4(.5, .5, .5, 0);
+
 		// Circles
 		while (cel = cmds.Next(cel)) {
-			// Ext
-			hext.cmd = cel;
-			hext.color = bcol;
-			//hext.acolor = bcol + KiVec4(.25, .25, .25, 0);
-			hext.scolor = bcol + KiVec4(.5, .5, .5, 0);
-
 			if (unselect)
-				cel->selected = 0;
-
-			KiVec4 col = GiColorMix(hext.color, hext.scolor, cel->selected * 50);
+				cel->selected = 0;					
 
 			// Object
 			if (cel->type == GiLayerCmdObject) {
 				head.type = GL_LINES;
+				hext.cmd = cel;
+				col = GiColorMix(hext.color, hext.scolor, cel->selected * 50);
 				GlslObjectsBuffer.AddHead(head, hext);
 			}
 
@@ -219,6 +260,7 @@ public:
 			if (cel->type == GiLayerCmdMove) {
 				data.x = cel->pos.x;
 				data.y = cel->pos.y;
+				data.z = 0;
 				color.SetColor(col);
 				cel_pos = cel;
 
@@ -238,6 +280,8 @@ public:
 			// Hole
 			if (cel->type == GiLayerCmdHole) {
 				head.type = GL_POLYGON;
+				hext.cmd = cel;
+				col = GiColorMix(hext.color, hext.scolor, cel->selected * 50);
 				GlslObjectsBuffer.AddHead(head, hext);
 
 				//KiVec4 col = el->GetColor();
@@ -251,6 +295,43 @@ public:
 					float angle = i * 2 * PI / GI_LAYER_PAINT_TRISZ;
 					data.x = cel->pos.x + (cos(angle) * cel->app->dia / 2);
 					data.y = cel->pos.y + (sin(angle) * cel->app->dia / 2);
+					data.z = 0;
+
+					color.SetColor(col);
+					GlslObjectsBuffer.AddData(data, color);
+				}
+			}
+
+			// Drill
+			if (cel->type == GiLayerCmdDrill) {
+				//// Move to center
+				//data.x = cel->pos.x;
+				//data.y = cel->pos.y;
+				//data.z = 0;
+				//color.SetColor(col);
+				//cel_pos = cel;
+
+				//GlslObjectsBuffer.AddData(data, color);
+
+				// Drill
+				head.type = GL_POLYGON;
+				hext.cmd = cel;
+				col = GiColorMix(hext.color, hext.scolor, cel->selected * 50);
+				GlslObjectsBuffer.AddHead(head, hext);
+
+				//KiVec4 col = el->GetColor();
+				if (cel->app && cel->app->selected) {
+					float c = col.x;
+					col.x = col.z;
+					col.z = c;
+				}
+
+				float dia = cel->app ? cel->app->dia / 2 : 3;
+
+				for (int i = 0; i < GI_LAYER_PAINT_TRISZ; i++) {
+					float angle = i * 2 * PI / GI_LAYER_PAINT_TRISZ;
+					data.x = cel->pos.x + (cos(angle) * dia / 2);
+					data.y = cel->pos.y + (sin(angle) * dia / 2);
 					data.z = 0;
 
 					color.SetColor(col);
@@ -363,6 +444,10 @@ public:
 		layer_id = id;
 	}
 
+	void SetName(VString val) {
+		name = val;
+	}
+
 	void SetColor(KiVec4 col) {
 		color = col;
 	}
@@ -382,16 +467,16 @@ public:
 	}
 
 	void AddCmdMove(int app_id, double x, double y) {
-		cmds.AddCmdMove(KiVec2(x, y), GetAppById(app_id));
+		cmds.AddCmdMove(GetAppById(app_id), KiVec2(x, y));
 	}
 
-	void AddCmdCir(int app_id, double x, double y) {
-		cmds.AddCmdCir(GetAppById(app_id), x, y);
+	void AddCmdCir(int app_id, KiVec2 pos) {
+		cmds.AddCmdCir(GetAppById(app_id), pos);
 	}
 
-	void AddCmdRot(int app_id, double x, double y, double cx, double cy, int opt) {
+	void AddCmdRot(int app_id, KiVec2 pos, KiVec2 center, int opt) {
 		//cmds.AddCmdCir(GetAppById(app_id), cx, cy);
-		cmds.AddCmdRot(GetAppById(app_id), x, y, cx, cy, opt);
+		cmds.AddCmdRot(GetAppById(app_id), pos, center, opt);
 	}
 
 	// App

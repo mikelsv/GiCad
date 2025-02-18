@@ -185,7 +185,7 @@ class GiLayerCmdEl;
 class GlslObjectsHeadExt {
 public:
 	GiLayerCmdEl *cmd;
-	KiVec4 color, acolor, scolor;
+	KiVec4 color, scolor;
 };
 
 class GlslObjectsData{
@@ -355,7 +355,7 @@ public:
 		GlslObjectsHeadExt *ext = GetMouseOverExt();
 
 		//last_color = GetFirstColor(last_mouse);
-		SetColor(last_mouse, ext->acolor);
+		//SetColor(last_mouse, ext->acolor);
 	}
 
 	KiVec4 GetFirstColor(GlslObjectsHead *head) {
