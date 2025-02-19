@@ -1282,7 +1282,7 @@ public:
 		
 		if (_debug_objects_selection_print && head != GlslObjectsBuffer.GetMouseOver()) {
 			SString ss;
-			ss.Format("OnMouseMoveActive %h %h ", (int64)head, (int)GlslObjectsBuffer.GetMouseOver());
+			ss.Format("OnMouseMoveActive %h %h ", (int64)head, (int64)GlslObjectsBuffer.GetMouseOver());
 			print(ss);
 			_debug_objects_selection_call++;
 		}
