@@ -27,12 +27,15 @@ Once I got tired of struggling with other people's CNC software.
 
 # Now - GiCad
 [x] Открывает Gerber и drl файлы.
+
 [x] Создаёт программу для сверловки.
 
 [-] Загружает и сохраняет проект.
+
 [-] Создайт программу для лазера и гравировки.
 
 [?] Есть проблемы с отображение Gerber файлов.
+
 [!] Решены проблемы с интерфейсом.
 
 # Build
@@ -43,6 +46,12 @@ git clone https://github.com/ocornut/imgui.git
 
 MSVS 2017 - 2022: GiCad/GiCad.vcxproj
 GCC: GiCad/Makefile
+```
+
+## OpenGl libraries
+```
+sudo dnf install glfw glfw-devel
+sudo dnf install mesa-libGLU mesa-libGLU-devel
 ```
 
 ## 0.0.1.4 (18.02.2025 18:30)

@@ -600,7 +600,8 @@ void GiWndClose(GLFWwindow* window){
 
 // Windows call
 void GiWindowsUpdateTitle(){
-	glfwSetWindowTitle(GiCadWindows.window, VString(LString() + GiProject.GetProjectName() + " - " + PROJECTNAME + " " + PROJECTVER[0].ver + _msv_zero_str));
+	if(GiCadWindows.window)
+		glfwSetWindowTitle(GiCadWindows.window, VString(LString() + GiProject.GetProjectName() + " - " + PROJECTNAME + " " + PROJECTVER[0].ver + _msv_zero_str));
 }
 
 void GiWindowsLayerInsertItem(int id, int active, MRGB color, VString Text){
