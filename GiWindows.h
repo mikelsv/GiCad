@@ -1,7 +1,7 @@
 #define MGLYSCALE -1
 #define GISCREENZOOM	1
 
-#define GICAD_ZOOM_MAX	25000
+#define GICAD_ZOOM_MAX	25000.
 #define GICAD_ZOOM_MIN	.05
 
 
