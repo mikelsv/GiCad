@@ -139,7 +139,7 @@ int main(int args, char* arg[], char* env[]){
 	ImGuiIO& imgui = ImGui::GetIO(); (void)imgui;
 	ImGui::StyleColorsLight();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
-	ImGui_ImplOpenGL3_Init("#version 450");
+	ImGui_ImplOpenGL3_Init("#version 430");
 
 	// Design
 	GiCadWindows.InsertPopUp(LString() + "Wellcome to GiCad " + PROJECTVER[0].ver + " !");

@@ -1,4 +1,4 @@
-#version 450
+#version 430
 // In
 layout (location = 0) in vec4 pointCoord;
 layout (location = 1) in vec4 colorCoord;

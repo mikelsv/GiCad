@@ -1,4 +1,4 @@
-#version 450
+#version 430
 in vec4 fragCoord;
 //in vec2 iResolution;
 //in float iTime;

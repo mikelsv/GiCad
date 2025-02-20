@@ -1,4 +1,4 @@
-#version 450
+#version 430
 in vec4 fragCoord;
 out highp vec4 fragColor;
 
