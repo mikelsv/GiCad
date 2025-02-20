@@ -144,7 +144,7 @@ void DrawPaths(inout vec4 fragColor, in vec2 fragCoord){
 
 }
 
-void drawGrid(inout vec4 fragColor, in vec2 fragCoord, in float border, in float mult = 1){
+void drawGrid(inout vec4 fragColor, in vec2 fragCoord, in float border, in float mult){
     float gridSize = 100.;
 
     ivec2 pixelCoord = ivec2(fragCoord.xy);
@@ -167,7 +167,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord){
     if(iZoom > .5)
         drawGrid(fragColor, fragCoord * 10., 1 / iZoom * 10., .5);
     // Main grid
-    drawGrid(fragColor, fragCoord, 1 / iZoom);
+    drawGrid(fragColor, fragCoord, 1 / iZoom, 1.);
 
 
     if(fragCoord.x < 0)
